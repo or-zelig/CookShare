@@ -1,0 +1,11 @@
+<resources>
+    <color name="colorPrimary">#FF9800</color>
+    <color name="colorPrimaryVariant">#F57C00</color>
+    <color name="colorSecondary">#FF7043</color>
+    <color name="colorBackground">#121212</color>
+    <color name="colorSurface">#1E1E1E</color>
+    <color name="colorOnPrimary">#121212</color>
+    <color name="colorOnSecondary">#121212</color>
+    <color name="colorOnBackground">#FFFFFF</color>
+    <color name="colorOnSurface">#FFFFFF</color>
+</resources>
