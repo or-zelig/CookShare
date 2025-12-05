@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/onboardingFragment">
+
+    <fragment
+        android:id="@+id/onboardingFragment"
+        android:name="com.cookshare.presentation.onboarding.OnboardingFragment"
+        android:label="Onboarding"
+        tools:layout="@layout/fragment_onboarding">
+        <action
+            android:id="@+id/action_onboarding_to_login"
+            app:destination="@id/loginFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/loginFragment"
+        android:name="com.cookshare.presentation.auth.LoginFragment"
+        android:label="Login"
+        tools:layout="@layout/fragment_login">
+        <action
+            android:id="@+id/action_login_to_signup"
+            app:destination="@id/signUpFragment" />
+        <action
+            android:id="@+id/action_login_to_home"
+            app:destination="@id/homeFeedFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/signUpFragment"
+        android:name="com.cookshare.presentation.auth.SignUpFragment"
+        android:label="Sign Up"
+        tools:layout="@layout/fragment_sign_up">
+        <action
+            android:id="@+id/action_signUp_to_home"
+            app:destination="@id/homeFeedFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/homeFeedFragment"
+        android:name="com.cookshare.presentation.home.HomeFeedFragment"
+        android:label="Home Feed"
+        tools:layout="@layout/fragment_home_feed">
+        <action
+            android:id="@+id/action_home_to_details"
+            app:destination="@id/recipeDetailsFragment" />
+        <action
+            android:id="@+id/action_home_to_create_step1"
+            app:destination="@id/createRecipeStep1Fragment" />
+        <action
+            android:id="@+id/action_home_to_profile"
+            app:destination="@id/profileFragment" />
+        <action
+            android:id="@+id/action_home_to_explore"
+            app:destination="@id/exploreFragment" />
+        <action
+            android:id="@+id/action_home_to_settings"
+            app:destination="@id/settingsFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/recipeDetailsFragment"
+        android:name="com.cookshare.presentation.details.RecipeDetailsFragment"
+        android:label="Recipe Details"
+        tools:layout="@layout/fragment_recipe_details" />
+
+    <fragment
+        android:id="@+id/createRecipeStep1Fragment"
+        android:name="com.cookshare.presentation.create.CreateRecipeStepFragment"
+        android:label="Create Recipe - Step 1"
+        tools:layout="@layout/fragment_create_recipe_step">
+        <argument
+            android:name="stepNumber"
+            app:argType="integer"
+            android:defaultValue="1" />
+        <action
+            android:id="@+id/action_create_step1_to_step2"
+            app:destination="@id/createRecipeStep2Fragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/createRecipeStep2Fragment"
+        android:name="com.cookshare.presentation.create.CreateRecipeStepFragment"
+        android:label="Create Recipe - Step 2"
+        tools:layout="@layout/fragment_create_recipe_step">
+        <argument
+            android:name="stepNumber"
+            app:argType="integer"
+            android:defaultValue="2" />
+        <action
+            android:id="@+id/action_create_step2_to_step3"
+            app:destination="@id/createRecipeStep3Fragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/createRecipeStep3Fragment"
+        android:name="com.cookshare.presentation.create.CreateRecipeStepFragment"
+        android:label="Create Recipe - Step 3"
+        tools:layout="@layout/fragment_create_recipe_step">
+        <argument
+            android:name="stepNumber"
+            app:argType="integer"
+            android:defaultValue="3" />
+        <action
+            android:id="@+id/action_create_step3_to_step4"
+            app:destination="@id/createRecipeStep4Fragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/createRecipeStep4Fragment"
+        android:name="com.cookshare.presentation.create.CreateRecipeStepFragment"
+        android:label="Create Recipe - Step 4"
+        tools:layout="@layout/fragment_create_recipe_step">
+        <argument
+            android:name="stepNumber"
+            app:argType="integer"
+            android:defaultValue="4" />
+        <action
+            android:id="@+id/action_create_step4_to_step5"
+            app:destination="@id/createRecipeStep5Fragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/createRecipeStep5Fragment"
+        android:name="com.cookshare.presentation.create.CreateRecipeStepFragment"
+        android:label="Create Recipe - Step 5"
+        tools:layout="@layout/fragment_create_recipe_step">
+        <argument
+            android:name="stepNumber"
+            app:argType="integer"
+            android:defaultValue="5" />
+        <action
+            android:id="@+id/action_create_step5_to_home"
+            app:destination="@id/homeFeedFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/profileFragment"
+        android:name="com.cookshare.presentation.profile.ProfileFragment"
+        android:label="Profile"
+        tools:layout="@layout/fragment_profile" />
+
+    <fragment
+        android:id="@+id/exploreFragment"
+        android:name="com.cookshare.presentation.explore.ExploreFragment"
+        android:label="Explore"
+        tools:layout="@layout/fragment_explore">
+        <action
+            android:id="@+id/action_explore_to_details"
+            app:destination="@id/recipeDetailsFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/settingsFragment"
+        android:name="com.cookshare.presentation.settings.SettingsFragment"
+        android:label="Settings"
+        tools:layout="@layout/fragment_settings" />
+</navigation>
