@@ -1,5 +1,3 @@
 <resources>
     <string name="app_name">CookShare</string>
-    <string name="create_recipe_step_title">Create Recipe - Step %1$d</string>
-    <string name="create_recipe_step_description">Placeholder content for step %1$d.</string>
 </resources>

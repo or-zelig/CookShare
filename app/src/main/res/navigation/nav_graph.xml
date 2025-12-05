@@ -68,13 +68,9 @@
 
     <fragment
         android:id="@+id/createRecipeStep1Fragment"
-        android:name="com.cookshare.presentation.create.CreateRecipeStepFragment"
-        android:label="Create Recipe - Step {stepNumber}"
-        tools:layout="@layout/fragment_create_recipe_step">
-        <argument
-            android:name="stepNumber"
-            app:argType="integer"
-            android:defaultValue="1" />
+        android:name="com.cookshare.presentation.create.CreateRecipeStep1Fragment"
+        android:label="Create Recipe - Step 1"
+        tools:layout="@layout/fragment_create_recipe_step1">
         <action
             android:id="@+id/action_create_step1_to_step2"
             app:destination="@id/createRecipeStep2Fragment" />
@@ -82,13 +78,9 @@
 
     <fragment
         android:id="@+id/createRecipeStep2Fragment"
-        android:name="com.cookshare.presentation.create.CreateRecipeStepFragment"
-        android:label="Create Recipe - Step {stepNumber}"
-        tools:layout="@layout/fragment_create_recipe_step">
-        <argument
-            android:name="stepNumber"
-            app:argType="integer"
-            android:defaultValue="2" />
+        android:name="com.cookshare.presentation.create.CreateRecipeStep2Fragment"
+        android:label="Create Recipe - Step 2"
+        tools:layout="@layout/fragment_create_recipe_step2">
         <action
             android:id="@+id/action_create_step2_to_step3"
             app:destination="@id/createRecipeStep3Fragment" />
@@ -96,13 +88,9 @@
 
     <fragment
         android:id="@+id/createRecipeStep3Fragment"
-        android:name="com.cookshare.presentation.create.CreateRecipeStepFragment"
-        android:label="Create Recipe - Step {stepNumber}"
-        tools:layout="@layout/fragment_create_recipe_step">
-        <argument
-            android:name="stepNumber"
-            app:argType="integer"
-            android:defaultValue="3" />
+        android:name="com.cookshare.presentation.create.CreateRecipeStep3Fragment"
+        android:label="Create Recipe - Step 3"
+        tools:layout="@layout/fragment_create_recipe_step3">
         <action
             android:id="@+id/action_create_step3_to_step4"
             app:destination="@id/createRecipeStep4Fragment" />
@@ -110,13 +98,9 @@
 
     <fragment
         android:id="@+id/createRecipeStep4Fragment"
-        android:name="com.cookshare.presentation.create.CreateRecipeStepFragment"
-        android:label="Create Recipe - Step {stepNumber}"
-        tools:layout="@layout/fragment_create_recipe_step">
-        <argument
-            android:name="stepNumber"
-            app:argType="integer"
-            android:defaultValue="4" />
+        android:name="com.cookshare.presentation.create.CreateRecipeStep4Fragment"
+        android:label="Create Recipe - Step 4"
+        tools:layout="@layout/fragment_create_recipe_step4">
         <action
             android:id="@+id/action_create_step4_to_step5"
             app:destination="@id/createRecipeStep5Fragment" />
@@ -124,13 +108,9 @@
 
     <fragment
         android:id="@+id/createRecipeStep5Fragment"
-        android:name="com.cookshare.presentation.create.CreateRecipeStepFragment"
-        android:label="Create Recipe - Step {stepNumber}"
-        tools:layout="@layout/fragment_create_recipe_step">
-        <argument
-            android:name="stepNumber"
-            app:argType="integer"
-            android:defaultValue="5" />
+        android:name="com.cookshare.presentation.create.CreateRecipeStep5Fragment"
+        android:label="Create Recipe - Step 5"
+        tools:layout="@layout/fragment_create_recipe_step5">
         <action
             android:id="@+id/action_create_step5_to_home"
             app:destination="@id/homeFeedFragment" />
