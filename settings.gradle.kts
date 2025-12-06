@@ -5,10 +5,10 @@ pluginManagement {
         gradlePluginPortal()
     }
     plugins {
-        id("com.android.application") version "8.1.2"
-        id("org.jetbrains.kotlin.android") version "1.9.22"
-        id("androidx.navigation.safeargs.kotlin") version "2.7.7"
-        id("com.google.gms.google-services") version "4.4.1"
+        id("com.android.application") version "8.9.1"
+        id("org.jetbrains.kotlin.android") version "2.0.21"
+        id("androidx.navigation.safeargs.kotlin") version "2.9.6"
+        id("com.google.gms.google-services") version "4.4.2"
     }
 }
 

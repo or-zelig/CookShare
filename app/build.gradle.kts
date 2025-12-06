@@ -11,7 +11,7 @@ plugins {
 
 android {
     namespace = "com.cookshare"
-    compileSdk = 34
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.cookshare"
