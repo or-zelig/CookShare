@@ -1,5 +1,4 @@
 import { Link, Navigate, Route, Routes } from "react-router-dom";
-import "./App.css";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Feed from "./pages/Feed";
@@ -18,23 +17,45 @@ export default function App() {
   return (
     <div className="app">
       <header className="topbar">
-        <div className="brand">CookShare</div>
+        <div className="brand">
+          <span className="brandMark" aria-hidden="true">
+            🍳
+          </span>
+          <span className="brandText">CookShare</span>
+          <span className="badge">beta</span>
+        </div>
 
         {!user ? (
           <nav className="nav">
-            <Link to="/login">Login</Link>
-            <Link to="/register">Register</Link>
+            <Link className="navLink" to="/login">
+              התחברות
+            </Link>
+            <Link className="navLink navLinkPrimary" to="/register">
+              הרשמה
+            </Link>
           </nav>
         ) : (
           <>
             <nav className="nav">
-              <Link to="/feed">Feed</Link>
-              <Link to="/ai">AI Search</Link>
-              <Link to="/profile/me">Me</Link>
+              <Link className="navLink" to="/feed">
+                פיד
+              </Link>
+              <Link className="navLink" to="/ai">
+                חיפוש AI
+              </Link>
+              <Link className="navLink" to="/profile/me">
+                הפרופיל שלי
+              </Link>
             </nav>
-            <div className="nav">
+
+            <div className="nav right">
+              <div className="userChip" title={user.username}>
+                <span className="userDot" aria-hidden="true" />
+                <span className="userName">{user.username}</span>
+              </div>
+
               <button className="btn" onClick={() => void logout()}>
-                Logout
+                התנתקות
               </button>
             </div>
           </>
@@ -47,7 +68,7 @@ export default function App() {
             path="/"
             element={
               loading ? (
-                <div className="card">Loading…</div>
+                <div className="card">טוען…</div>
               ) : user ? (
                 <Navigate to="/feed" replace />
               ) : (
