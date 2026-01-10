@@ -5,7 +5,7 @@ import { ENV } from "./config/env";
 import { authRouter } from "./routes/auth";
 import { notFound } from "./middlewares/notFound";
 import { errorHandler } from "./middlewares/errorHandler";
-
+import { setupSwagger } from "./swagger/setupSwagger";
 
 export function createApp() {
   const app = express();
@@ -21,10 +21,10 @@ export function createApp() {
   app.use(cookieParser());
 
   app.use(authRouter);
+  setupSwagger(app);
 
   app.use(notFound);
   app.use(errorHandler);
-
 
   return app;
 }
