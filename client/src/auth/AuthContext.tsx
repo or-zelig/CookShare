@@ -1,12 +1,21 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { api } from "../api/http";
-import type { User } from "../types/models";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { db, type User } from "../mock/db";
 
 type AuthState = {
   user: User | null;
   loading: boolean;
-  setTokens: (accessToken: string, refreshToken?: string) => void;
   login: (username: string, password: string) => Promise<void>;
+  register: (
+    username: string,
+    email: string,
+    password: string
+  ) => Promise<void>;
   logout: () => Promise<void>;
 };
 
@@ -16,18 +25,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  function setTokens(accessToken: string, refreshToken?: string) {
-    sessionStorage.setItem("accessToken", accessToken);
-    if (refreshToken) localStorage.setItem("refreshToken", refreshToken);
-  }
-
   async function restore() {
-    try {
-      const me = await api.me();
-      setUser(me);
-    } catch {
-      setUser(null);
-    }
+    setUser(db.getCurrentUser());
   }
 
   useEffect(() => {
@@ -39,22 +38,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   async function login(username: string, password: string) {
-    const t = await api.login(username, password);
-    setTokens(t.accessToken, t.refreshToken);
-    await restore();
+    const u = db.login(username, password);
+    setUser(u);
+  }
+
+  async function register(username: string, email: string, password: string) {
+    const u = db.register(username, email, password);
+    setUser(u);
   }
 
   async function logout() {
-    try {
-      await api.logout();
-    } catch {}
-    sessionStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
+    db.logout();
     setUser(null);
   }
 
-  const value = useMemo(() => ({ user, loading, setTokens, login, logout }), [user, loading]);
-
+  const value = useMemo(
+    () => ({ user, loading, login, register, logout }),
+    [user, loading]
+  );
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
 }
 
