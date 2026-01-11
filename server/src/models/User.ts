@@ -5,7 +5,9 @@ export type UserDoc = mongoose.Document & {
   email: string;
   passwordHash: string;
   avatarUrl?: string;
-  refreshTokens: string[]; // stored as hashed tokens
+  refreshTokens: string[];
+  googleId?: string;
+  provider: "local" | "google";
 };
 
 const userSchema = new mongoose.Schema<UserDoc>(
@@ -15,6 +17,8 @@ const userSchema = new mongoose.Schema<UserDoc>(
     passwordHash: { type: String, required: true },
     avatarUrl: { type: String, default: "" },
     refreshTokens: { type: [String], default: [] },
+    googleId: { type: String, default: "" },
+    provider: { type: String, enum: ["local", "google"], default: "local" },
   },
   { timestamps: true }
 );

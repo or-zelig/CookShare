@@ -5,6 +5,7 @@ import { hashToken, signAccessToken, signRefreshToken, verifyRefreshToken } from
 import { ENV } from "../config/env";
 import { requireAuth, AuthedRequest } from "../middlewares/requireAuth";
 import type { Request, Response, NextFunction } from "express";
+import { verifyGoogleIdToken } from "../auth/google";
 
 // catches async errors and forwards to error middleware (prevents hanging requests)
 const asyncHandler =
@@ -171,5 +172,70 @@ authRouter.get("/auth/me", requireAuth, asyncHandler(async (req: AuthedRequest, 
     });
   })
 );
+
+authRouter.post("/auth/google", async (req, res, next) => {
+  try {
+    const { credential } = req.body ?? {};
+    if (!credential) return res.status(400).json({ message: "credential is required" });
+
+    const p = await verifyGoogleIdToken(String(credential));
+
+    const googleId = p.sub;
+    const email = (p.email || "").toLowerCase();
+    const username = p.name || email.split("@")[0] || "user";
+    const avatarUrl = p.picture || "";
+    const emailVerified = Boolean((p as any).email_verified);
+
+    if (!googleId || !email) return res.status(401).json({ message: "Invalid Google token" });
+    if (!emailVerified) return res.status(401).json({ message: "Google email not verified" });
+
+    // 1) נסה לפי googleId
+    let user = await User.findOne({ googleId });
+
+    // 2) אם לא נמצא — נסה לפי email (link account)
+    if (!user) {
+      user = await User.findOne({ email });
+      if (user) {
+        // link
+        user.googleId = googleId;
+        if (!user.avatarUrl && avatarUrl) user.avatarUrl = avatarUrl;
+        // לא מחייב לשנות provider אם כבר local, אבל זה בסדר לשים google
+        user.provider = "google";
+        await user.save();
+      }
+    }
+
+    // 3) אם עדיין אין — צור חדש
+    if (!user) {
+      user = await User.create({
+        username,
+        email,
+        passwordHash: "GOOGLE_OAUTH", // או ריק. העיקר שהשדה קיים אצלכם
+        avatarUrl,
+        refreshTokens: [],
+        googleId,
+        provider: "google",
+      });
+    }
+
+    // הנפקת refresh/access כמו אצלכם
+    const refreshToken = signRefreshToken(user.id);
+    user.refreshTokens.push(hashToken(refreshToken));
+    await user.save();
+
+    // אותו cookie helper שיש לכם
+    setRefreshCookie(res, refreshToken);
+
+    const accessToken = signAccessToken(user.id, user.username);
+
+    return res.json({
+      user: { id: user.id, username: user.username, email: user.email, avatarUrl: user.avatarUrl || "" },
+      accessToken,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 
 
