@@ -71,4 +71,13 @@ describe("Auth API", () => {
     expect(res.status).toBe(200);
     expect(res.body.ok).toBe(true);
   });
+
+  it("POST /auth/google without credential returns 400", async () => {
+    const res = await request(app)
+      .post("/auth/google")
+      .send({})
+      .set("Content-Type", "application/json");
+
+    expect(res.status).toBe(400);
+  });
 });
