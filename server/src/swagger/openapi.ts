@@ -6,7 +6,7 @@ export const openApiSpec = {
     description: "Recipe social app backend (Auth + Posts later).",
   },
   servers: [{ url: "http://localhost:4000" }],
-  tags: [{ name: "Health" }, { name: "Auth" }],
+  tags: [{ name: "Auth" }],
   components: {
     securitySchemes: {
       bearerAuth: { type: "http", scheme: "bearer", bearerFormat: "JWT" },
@@ -66,19 +66,6 @@ export const openApiSpec = {
     },
   },
   paths: {
-    "/health": {
-      get: {
-        tags: ["Health"],
-        summary: "Health check",
-        responses: {
-          "200": {
-            description: "OK",
-            content: { "application/json": { schema: { type: "object" } } },
-          },
-        },
-      },
-    },
-
     "/auth/register": {
       post: {
         tags: ["Auth"],
