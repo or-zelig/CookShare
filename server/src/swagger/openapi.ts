@@ -63,6 +63,11 @@ export const openApiSpec = {
         properties: { ok: { type: "boolean", example: true } },
         required: ["ok"],
       },
+      GoogleAuthRequest: {
+        type: "object",
+        properties: { credential: { type: "string" } },
+        required: ["credential"],
+      },
     },
   },
   paths: {
@@ -162,5 +167,22 @@ export const openApiSpec = {
         },
       },
     },
+
+    "/auth/google": {
+      post: {
+        tags: ["Auth"],
+        summary: "Login/Register with Google (id_token credential)",
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: { $ref: "#/components/schemas/GoogleAuthRequest" } } },
+        },
+        responses: {
+          "200": { description: "OK", content: { "application/json": { schema: { $ref: "#/components/schemas/AuthResponse" } } } },
+          "400": { description: "Bad request", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+          "401": { description: "Unauthorized", content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } } },
+        },
+      },
+    },
+
   },
 } as const;
