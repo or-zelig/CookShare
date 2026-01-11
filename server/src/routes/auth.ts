@@ -4,6 +4,13 @@ import { User } from "../models/User";
 import { hashToken, signAccessToken, signRefreshToken, verifyRefreshToken } from "../auth/tokens";
 import { ENV } from "../config/env";
 import { requireAuth, AuthedRequest } from "../middlewares/requireAuth";
+import type { Request, Response, NextFunction } from "express";
+
+// catches async errors and forwards to error middleware (prevents hanging requests)
+const asyncHandler =
+  (fn: (req: Request, res: Response, next: NextFunction) => Promise<any>) =>
+  (req: Request, res: Response, next: NextFunction) =>
+    Promise.resolve(fn(req, res, next)).catch(next);
 
 export const authRouter = Router();
 
@@ -20,7 +27,7 @@ function clearRefreshCookie(res: any) {
   res.clearCookie("rt", { path: "/" });
 }
 
-authRouter.post("/auth/register", async (req, res) => {
+authRouter.post("/auth/register", asyncHandler(async (req, res) => {
   const { username, email, password } = req.body ?? {};
 
   if (!username || !email || !password) {
@@ -56,9 +63,9 @@ authRouter.post("/auth/register", async (req, res) => {
     user: { id: user.id, username: user.username, email: user.email, avatarUrl: user.avatarUrl || "" },
     accessToken,
   });
-});
+}));
 
-authRouter.post("/auth/login", async (req, res) => {
+authRouter.post("/auth/login", asyncHandler(async (req, res) => {
   const { username, password } = req.body ?? {};
   if (!username || !password) {
     return res.status(400).json({ message: "username and password are required" });
@@ -84,9 +91,9 @@ authRouter.post("/auth/login", async (req, res) => {
     user: { id: user.id, username: user.username, email: user.email, avatarUrl: user.avatarUrl || "" },
     accessToken,
   });
-});
+}));
 
-authRouter.post("/auth/refresh", async (req, res) => {
+authRouter.post("/auth/refresh", asyncHandler(async (req, res) => {
   const token = req.cookies?.rt as string | undefined;
   if (!token) return res.status(401).json({ message: "Missing refresh token" });
 
@@ -130,9 +137,9 @@ authRouter.post("/auth/refresh", async (req, res) => {
     user: { id: user.id, username: user.username, email: user.email, avatarUrl: user.avatarUrl || "" },
     accessToken,
   });
-});
+}));
 
-authRouter.post("/auth/logout", async (req, res) => {
+authRouter.post("/auth/logout", asyncHandler(async (req, res) => {
   const token = req.cookies?.rt as string | undefined;
   clearRefreshCookie(res);
 
@@ -151,13 +158,18 @@ authRouter.post("/auth/logout", async (req, res) => {
   }
 
   return res.json({ ok: true });
-});
+}));
 
-authRouter.get("/auth/me", requireAuth, async (req: AuthedRequest, res) => {
-  const user = await User.findById(req.userId).select("_id username email avatarUrl");
-  if (!user) return res.status(404).json({ message: "User not found" });
+authRouter.get("/auth/me", requireAuth, asyncHandler(async (req: AuthedRequest, res) => {
+    if (!req.userId) return res.status(401).json({ message: "Invalid/expired token" });
 
-  return res.json({
-    user: { id: user.id, username: user.username, email: user.email, avatarUrl: user.avatarUrl || "" },
-  });
-});
+    const user = await User.findById(req.userId).select("_id username email avatarUrl");
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    return res.json({
+      user: { id: user.id, username: user.username, email: user.email, avatarUrl: user.avatarUrl || "" },
+    });
+  })
+);
+
+
