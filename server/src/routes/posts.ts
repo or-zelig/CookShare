@@ -25,7 +25,6 @@ function single(v: unknown): string | undefined {
   return undefined;
 }
 
-
 function toInt(v: unknown, def: number, min: number, max: number): number {
   if (typeof v === "number" && Number.isFinite(v)) {
     const n = Math.floor(v);
@@ -77,6 +76,16 @@ function parseStringArray(v: unknown): string[] {
   }
 
   return [];
+}
+
+function asId(v: unknown): string {
+  if (typeof v === "string") return v;
+  if (Array.isArray(v) && typeof v[0] === "string") return v[0];
+  return String(v);
+}
+
+function oid(v: unknown): mongoose.Types.ObjectId {
+  return new mongoose.Types.ObjectId(asId(v));
 }
 
 /**
@@ -398,11 +407,11 @@ postsRouter.post("/posts/:id/comments", requireAuth, async (req: AuthedRequest, 
   const exists = await Post.exists({ _id: postId });
   if (!exists) return res.status(404).json({ message: "Post not found" });
 
-  const comment = await Comment.create({
-    postId,
-    author: req.userId,
-    text,
-  });
+const comment = await Comment.create({
+  postId: oid(postId),
+  author: oid(req.userId),
+  text,
+});
 
   const populated = await Comment.findById(comment._id).populate("author", "username avatarUrl");
   return res.status(201).json({ comment: populated });
@@ -417,10 +426,11 @@ postsRouter.get("/posts/:id/comments", async (req: Request, res: Response) => {
   const limit = Math.max(1, Math.min(50, Number(limitRaw ?? 20) || 20));
   const cursor = typeof req.query.cursor === "string" ? req.query.cursor : undefined;
 
-  const filter: any = { postId: new mongoose.Types.ObjectId(postId) };
-  if (cursor && mongoose.isValidObjectId(cursor)) {
-    filter._id = { $lt: new mongoose.Types.ObjectId(cursor) };
-  }
+const filter: any = { postId: oid(postId) };
+
+if (cursor && mongoose.isValidObjectId(cursor)) {
+  filter._id = { $lt: oid(cursor) };
+}
 
   const items = await Comment.find(filter)
     .sort({ _id: -1 })
@@ -457,11 +467,12 @@ postsRouter.post("/posts/:id/like", requireAuth, async (req: AuthedRequest, res:
   const exists = await Post.exists({ _id: postId });
   if (!exists) return res.status(404).json({ message: "Post not found" });
 
-  await PostLike.updateOne(
-    { postId, userId: req.userId },
-    { $setOnInsert: { postId, userId: req.userId } },
-    { upsert: true }
-  );
+await PostLike.updateOne(
+  { postId: oid(postId), userId: oid(req.userId) },
+  { $setOnInsert: { postId: oid(postId), userId: oid(req.userId) } },
+  { upsert: true }
+);
+
 
   return res.json({ ok: true });
 });
@@ -471,7 +482,8 @@ postsRouter.delete("/posts/:id/like", requireAuth, async (req: AuthedRequest, re
   const postId = req.params.id;
   if (!mongoose.isValidObjectId(postId)) return res.status(400).json({ message: "invalid id" });
 
-  await PostLike.deleteOne({ postId, userId: req.userId });
+await PostLike.deleteOne({ postId: oid(postId), userId: oid(req.userId) });
+
   return res.json({ ok: true });
 });
 
