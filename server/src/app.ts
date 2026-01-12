@@ -6,6 +6,7 @@ import { authRouter } from "./routes/auth";
 import { notFound } from "./middlewares/notFound";
 import { errorHandler } from "./middlewares/errorHandler";
 import { setupSwagger } from "./swagger/setupSwagger";
+import postsRouter from "./routes/posts";
 import path from "path";
 
 export function createApp() {
@@ -25,6 +26,8 @@ export function createApp() {
   setupSwagger(app);
 
   app.use("/uploads", express.static(path.resolve(process.cwd(), "uploads")));
+
+   app.use(postsRouter);
 
   app.use(notFound);
   app.use(errorHandler);
