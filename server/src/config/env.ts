@@ -20,5 +20,7 @@ export const ENV = {
   ACCESS_TOKEN_TTL: (process.env.ACCESS_TOKEN_TTL || "15m") as SignOptions["expiresIn"],
   REFRESH_TOKEN_TTL: (process.env.REFRESH_TOKEN_TTL || "7d") as SignOptions["expiresIn"],
 
+  GOOGLE_CLIENT_ID: must("GOOGLE_CLIENT_ID"),
+
   NODE_ENV: process.env.NODE_ENV || "development",
 };
