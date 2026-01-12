@@ -50,20 +50,21 @@ authRouter.post("/auth/register", asyncHandler(async (req, res) => {
     refreshTokens: [],
   });
 
-  const refreshToken = signRefreshToken(user.id);
-  const refreshHash = hashToken(refreshToken);
+  const { token: refreshToken, jti, expiresAt } = signRefreshToken(user.id);
 
-  user.refreshTokens.push(refreshHash);
+  user.refreshTokens.push({
+    jti,
+    tokenHash: hashToken(refreshToken),
+    expiresAt,
+  } as any);
+
   await user.save();
-
   setRefreshCookie(res, refreshToken);
 
-  const accessToken = signAccessToken(user.id, user.username);
+const { token: accessToken, expiresAt: accessTokenExpiresAt } =
+  signAccessToken(user.id, user.username);
 
-  return res.status(201).json({
-    user: { id: user.id, username: user.username, email: user.email, avatarUrl: user.avatarUrl || "" },
-    accessToken,
-  });
+return res.status(201).json({ user, accessToken, accessTokenExpiresAt });
 }));
 
 authRouter.post("/auth/login", asyncHandler(async (req, res) => {
@@ -78,87 +79,92 @@ authRouter.post("/auth/login", asyncHandler(async (req, res) => {
   const ok = await bcrypt.compare(password, user.passwordHash);
   if (!ok) return res.status(401).json({ message: "Invalid credentials" });
 
-  const refreshToken = signRefreshToken(user.id);
-  const refreshHash = hashToken(refreshToken);
+    const { token: refreshToken, jti, expiresAt } = signRefreshToken(user.id);
 
-  user.refreshTokens.push(refreshHash);
+  user.refreshTokens.push({
+    jti,
+    tokenHash: hashToken(refreshToken),
+    expiresAt,
+  } as any);
+
   await user.save();
-
   setRefreshCookie(res, refreshToken);
 
-  const accessToken = signAccessToken(user.id, user.username);
+const { token: accessToken, expiresAt: accessTokenExpiresAt } =
+  signAccessToken(user.id, user.username);
 
-  return res.json({
-    user: { id: user.id, username: user.username, email: user.email, avatarUrl: user.avatarUrl || "" },
-    accessToken,
-  });
+return res.json({ user, accessToken, accessTokenExpiresAt });
 }));
 
 authRouter.post("/auth/refresh", asyncHandler(async (req, res) => {
   const token = req.cookies?.rt as string | undefined;
-  if (!token) return res.status(401).json({ message: "Missing refresh token" });
+if (!token) return res.status(401).json({ message: "Missing refresh token" });
 
-  let payload: { sub: string; jti: string };
-  try {
-    payload = verifyRefreshToken(token);
-  } catch {
-    clearRefreshCookie(res);
-    return res.status(401).json({ message: "Invalid refresh token" });
-  }
+let payload: { sub: string; jti: string };
+try {
+  payload = verifyRefreshToken(token);
+} catch {
+  clearRefreshCookie(res);
+  return res.status(401).json({ message: "Invalid refresh token" });
+}
 
-  const user = await User.findById(payload.sub);
-  if (!user) {
-    clearRefreshCookie(res);
-    return res.status(401).json({ message: "Invalid refresh token" });
-  }
+const user = await User.findById(payload.sub);
+if (!user) {
+  clearRefreshCookie(res);
+  return res.status(401).json({ message: "Invalid refresh token" });
+}
 
-  const oldHash = hashToken(token);
-  const hasToken = user.refreshTokens.includes(oldHash);
+const oldHash = hashToken(token);
+const idx = user.refreshTokens.findIndex((t) => t.tokenHash === oldHash);
 
-  // reuse detection: token is valid but not in DB
-  if (!hasToken) {
-    user.refreshTokens = [];
-    await user.save();
-    clearRefreshCookie(res);
-    return res.status(403).json({ message: "Refresh token reuse detected" });
-  }
-
-  // rotate: remove old, add new
-  user.refreshTokens = user.refreshTokens.filter((t) => t !== oldHash);
-
-  const newRefresh = signRefreshToken(user.id);
-  user.refreshTokens.push(hashToken(newRefresh));
+if (idx === -1) {
+  // reuse detected -> wipe all
+  user.refreshTokens.splice(0, user.refreshTokens.length);
   await user.save();
+  clearRefreshCookie(res);
+  return res.status(403).json({ message: "Refresh token reuse detected" });
+}
 
-  setRefreshCookie(res, newRefresh);
+// remove old token
+user.refreshTokens.splice(idx, 1);
 
-  const accessToken = signAccessToken(user.id, user.username);
+// rotate
+const { token: newRefresh, jti, expiresAt } = signRefreshToken(user.id);
+user.refreshTokens.push({ jti, tokenHash: hashToken(newRefresh), expiresAt } as any);
 
-  return res.json({
-    user: { id: user.id, username: user.username, email: user.email, avatarUrl: user.avatarUrl || "" },
-    accessToken,
-  });
+await user.save();
+setRefreshCookie(res, newRefresh);
+
+const accessToken = signAccessToken(user.id, user.username);
+return res.json({
+  user: { id: user.id, username: user.username, email: user.email, avatarUrl: user.avatarUrl || "" },
+  accessToken,
+});
+
 }));
 
 authRouter.post("/auth/logout", asyncHandler(async (req, res) => {
-  const token = req.cookies?.rt as string | undefined;
-  clearRefreshCookie(res);
+const token = req.cookies?.rt as string | undefined;
+clearRefreshCookie(res);
 
-  if (token) {
-    try {
-      const payload = verifyRefreshToken(token);
-      const user = await User.findById(payload.sub);
-      if (user) {
-        const h = hashToken(token);
-        user.refreshTokens = user.refreshTokens.filter((t) => t !== h);
-        await user.save();
+if (token) {
+  try {
+    const payload = verifyRefreshToken(token);
+    const user = await User.findById(payload.sub);
+    if (user) {
+      const h = hashToken(token);
+      for (let i = user.refreshTokens.length - 1; i >= 0; i--) {
+        if (user.refreshTokens[i].tokenHash === h) user.refreshTokens.splice(i, 1);
       }
-    } catch {
-      // ignore
+      await user.save();
     }
+  } catch {
+    // ignore
   }
+}
 
-  return res.json({ ok: true });
+return res.json({ ok: true });
+
 }));
 
 authRouter.get("/auth/me", requireAuth, asyncHandler(async (req: AuthedRequest, res) => {
@@ -218,20 +224,21 @@ authRouter.post("/auth/google", async (req, res, next) => {
       });
     }
 
-    // הנפקת refresh/access כמו אצלכם
-    const refreshToken = signRefreshToken(user.id);
-    user.refreshTokens.push(hashToken(refreshToken));
-    await user.save();
+  const { token: refreshToken, jti, expiresAt } = signRefreshToken(user.id);
 
-    // אותו cookie helper שיש לכם
-    setRefreshCookie(res, refreshToken);
+  user.refreshTokens.push({
+    jti,
+    tokenHash: hashToken(refreshToken),
+    expiresAt,
+  } as any);
 
-    const accessToken = signAccessToken(user.id, user.username);
+  await user.save();
+  setRefreshCookie(res, refreshToken);
 
-    return res.json({
-      user: { id: user.id, username: user.username, email: user.email, avatarUrl: user.avatarUrl || "" },
-      accessToken,
-    });
+const { token: accessToken, expiresAt: accessTokenExpiresAt } =
+  signAccessToken(user.id, user.username);
+
+return res.json({ user, accessToken, accessTokenExpiresAt });
   } catch (err) {
     next(err);
   }
