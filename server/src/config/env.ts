@@ -15,10 +15,10 @@ export const ENV = {
 
   ACCESS_TOKEN_SECRET: must("ACCESS_TOKEN_SECRET"),
   REFRESH_TOKEN_SECRET: must("REFRESH_TOKEN_SECRET"),
+  REFRESH_TOKEN_TTL: must("REFRESH_TOKEN_TTL"),
 
   // IMPORTANT: type it as jsonwebtoken expects
   ACCESS_TOKEN_TTL: (process.env.ACCESS_TOKEN_TTL || "15m") as SignOptions["expiresIn"],
-  REFRESH_TOKEN_TTL: (process.env.REFRESH_TOKEN_TTL || "7d") as SignOptions["expiresIn"],
 
   GOOGLE_CLIENT_ID: must("GOOGLE_CLIENT_ID"),
 
