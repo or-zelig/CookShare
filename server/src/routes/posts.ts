@@ -6,6 +6,8 @@ import path from "path";
 import { Post, type Ingredient, type Step } from "../models/Post";
 import { upload } from "../middlewares/upload";
 import { requireAuth, AuthedRequest } from "../middlewares/requireAuth";
+import { Comment } from "../models/Comment";
+import { PostLike } from "../models/PostLike";
 
 export const postsRouter = Router();
 
@@ -384,6 +386,95 @@ postsRouter.delete("/posts/:id", requireAuth, async (req: AuthedRequest, res: Re
 
   return res.json({ ok: true });
 });
+
+// POST /posts/:id/comments (auth)
+postsRouter.post("/posts/:id/comments", requireAuth, async (req: AuthedRequest, res: Response) => {
+  const postId = req.params.id;
+  if (!mongoose.isValidObjectId(postId)) return res.status(400).json({ message: "invalid id" });
+
+  const text = typeof req.body?.text === "string" ? req.body.text.trim() : "";
+  if (!text) return res.status(400).json({ message: "text is required" });
+
+  const exists = await Post.exists({ _id: postId });
+  if (!exists) return res.status(404).json({ message: "Post not found" });
+
+  const comment = await Comment.create({
+    postId,
+    author: req.userId,
+    text,
+  });
+
+  const populated = await Comment.findById(comment._id).populate("author", "username avatarUrl");
+  return res.status(201).json({ comment: populated });
+});
+
+// GET /posts/:id/comments (public)
+postsRouter.get("/posts/:id/comments", async (req: Request, res: Response) => {
+  const postId = req.params.id;
+  if (!mongoose.isValidObjectId(postId)) return res.status(400).json({ message: "invalid id" });
+
+  const limitRaw = req.query.limit;
+  const limit = Math.max(1, Math.min(50, Number(limitRaw ?? 20) || 20));
+  const cursor = typeof req.query.cursor === "string" ? req.query.cursor : undefined;
+
+  const filter: any = { postId: new mongoose.Types.ObjectId(postId) };
+  if (cursor && mongoose.isValidObjectId(cursor)) {
+    filter._id = { $lt: new mongoose.Types.ObjectId(cursor) };
+  }
+
+  const items = await Comment.find(filter)
+    .sort({ _id: -1 })
+    .limit(limit + 1)
+    .populate("author", "username avatarUrl");
+
+  const hasMore = items.length > limit;
+  const page = hasMore ? items.slice(0, limit) : items;
+  const nextCursor = hasMore ? String(page[page.length - 1]._id) : null;
+
+  return res.json({ comments: page, nextCursor });
+});
+
+// DELETE /comments/:id (auth + owner)
+postsRouter.delete("/comments/:id", requireAuth, async (req: AuthedRequest, res: Response) => {
+  const id = req.params.id;
+  if (!mongoose.isValidObjectId(id)) return res.status(400).json({ message: "invalid id" });
+
+  const comment = await Comment.findById(id);
+  if (!comment) return res.status(404).json({ message: "Comment not found" });
+
+  if (String(comment.author) !== req.userId) return res.status(403).json({ message: "Forbidden" });
+
+  await comment.deleteOne();
+  return res.json({ ok: true });
+});
+
+
+// POST /posts/:id/like (auth) - idempotent
+postsRouter.post("/posts/:id/like", requireAuth, async (req: AuthedRequest, res: Response) => {
+  const postId = req.params.id;
+  if (!mongoose.isValidObjectId(postId)) return res.status(400).json({ message: "invalid id" });
+
+  const exists = await Post.exists({ _id: postId });
+  if (!exists) return res.status(404).json({ message: "Post not found" });
+
+  await PostLike.updateOne(
+    { postId, userId: req.userId },
+    { $setOnInsert: { postId, userId: req.userId } },
+    { upsert: true }
+  );
+
+  return res.json({ ok: true });
+});
+
+// DELETE /posts/:id/like (auth)
+postsRouter.delete("/posts/:id/like", requireAuth, async (req: AuthedRequest, res: Response) => {
+  const postId = req.params.id;
+  if (!mongoose.isValidObjectId(postId)) return res.status(400).json({ message: "invalid id" });
+
+  await PostLike.deleteOne({ postId, userId: req.userId });
+  return res.json({ ok: true });
+});
+
 
 
 export default postsRouter;
