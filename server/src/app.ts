@@ -6,6 +6,7 @@ import { authRouter } from "./routes/auth";
 import { notFound } from "./middlewares/notFound";
 import { errorHandler } from "./middlewares/errorHandler";
 import { setupSwagger } from "./swagger/setupSwagger";
+import path from "path";
 
 export function createApp() {
   const app = express();
@@ -22,6 +23,8 @@ export function createApp() {
 
   app.use(authRouter);
   setupSwagger(app);
+
+  app.use("/uploads", express.static(path.resolve(process.cwd(), "uploads")));
 
   app.use(notFound);
   app.use(errorHandler);
