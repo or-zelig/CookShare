@@ -5,14 +5,10 @@ export async function connectTestDb() {
 }
 
 export async function clearTestDb() {
-  const db = mongoose.connection.db;
-  if (!db) return; // not connected yet
-
-  const collections = await db.collections();
-  for (const c of collections) {
-    await c.deleteMany({});
-  }
+  if (!mongoose.connection.db) return;
+  await mongoose.connection.db.dropDatabase();
 }
+
 
 export async function disconnectTestDb() {
   await mongoose.disconnect();
