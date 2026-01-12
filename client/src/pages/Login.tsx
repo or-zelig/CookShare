@@ -33,54 +33,61 @@ export default function Login() {
   }
 
   return (
-    <div className="card">
-      <h2>התחברות</h2>
-      <p className="muted">UI + Mock. נסי: Noa / 1234</p>
+    <div className="authLayout">
+      <div className="card authCard">
+        <h2 style={{ marginTop: 0 }}>התחברות</h2>
+        <p className="muted" style={{ marginTop: 0 }}>
+          Mock בלבד. נסי: <b>Noa</b> / <b>1234</b>
+        </p>
 
-      <form className="col" onSubmit={onSubmit}>
-        <input
-          className="input"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          placeholder="שם משתמש"
-        />
-        <input
-          className="input"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="סיסמה"
-          type="password"
-        />
+        <form className="col" onSubmit={onSubmit}>
+          <input
+            className="input"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="שם משתמש"
+          />
+          <input
+            className="input"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="סיסמה"
+            type="password"
+          />
 
-        {err && <div className="error">{err}</div>}
+          {err && <div className="error">{err}</div>}
 
-        <button className="btn btnPrimary" disabled={busy}>
-          {busy ? "מתחברת…" : "התחברי"}
-        </button>
+          <button className="btn btnPrimary" disabled={busy}>
+            {busy ? "מתחברת…" : "התחברי"}
+          </button>
 
-        <div className="row" style={{ justifyContent: "space-between" }}>
-          <Link to="/register" className="muted">
-            אין לך משתמש? הרשמה
-          </Link>
+          <div
+            className="row"
+            style={{ justifyContent: "space-between", flexWrap: "wrap" }}
+          >
+            <Link to="/register" className="muted">
+              אין לך משתמש? הרשמה
+            </Link>
 
-          <div className="row">
-            <button
-              type="button"
-              className="btn"
-              onClick={() => alert("Mock: Google OAuth")}
-            >
-              Google
-            </button>
-            <button
-              type="button"
-              className="btn"
-              onClick={() => alert("Mock: Facebook OAuth")}
-            >
-              Facebook
-            </button>
+            <div className="row">
+              <button
+                type="button"
+                className="btn"
+                onClick={() => alert("Mock: Google OAuth")}
+              >
+                Google
+              </button>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => alert("Mock: Facebook OAuth")}
+              >
+                Facebook
+              </button>
+            </div>
           </div>
-        </div>
-      </form>
+        </form>
+      </div>
     </div>
   );
 }

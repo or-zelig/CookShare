@@ -25,16 +25,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  async function restore() {
-    setUser(db.getCurrentUser());
-  }
-
   useEffect(() => {
-    (async () => {
-      setLoading(true);
-      await restore();
-      setLoading(false);
-    })();
+    setLoading(true);
+    setUser(db.getCurrentUser());
+    setLoading(false);
   }, []);
 
   async function login(username: string, password: string) {

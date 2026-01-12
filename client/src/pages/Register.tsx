@@ -17,6 +17,8 @@ export default function Register() {
     e.preventDefault();
     setErr(null);
 
+    if (!username.trim()) return setErr("שם משתמש חובה");
+    if (!email.trim()) return setErr("אימייל חובה");
     if (password.length < 4) return setErr("סיסמה קצרה מדי (מינימום 4)");
     if (password !== confirm) return setErr("הסיסמאות לא תואמות");
 
@@ -32,47 +34,52 @@ export default function Register() {
   }
 
   return (
-    <div className="card">
-      <h2>הרשמה</h2>
+    <div className="authLayout">
+      <div className="card authCard">
+        <h2 style={{ marginTop: 0 }}>הרשמה</h2>
+        <p className="muted" style={{ marginTop: 0 }}>
+          Mock בלבד — יוצר משתמש מקומי בדפדפן.
+        </p>
 
-      <form className="col" onSubmit={onSubmit}>
-        <input
-          className="input"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          placeholder="שם משתמש"
-        />
-        <input
-          className="input"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="אימייל"
-        />
-        <input
-          className="input"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="סיסמה"
-          type="password"
-        />
-        <input
-          className="input"
-          value={confirm}
-          onChange={(e) => setConfirm(e.target.value)}
-          placeholder="אישור סיסמה"
-          type="password"
-        />
+        <form className="col" onSubmit={onSubmit}>
+          <input
+            className="input"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="שם משתמש"
+          />
+          <input
+            className="input"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="אימייל"
+          />
+          <input
+            className="input"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="סיסמה"
+            type="password"
+          />
+          <input
+            className="input"
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+            placeholder="אישור סיסמה"
+            type="password"
+          />
 
-        {err && <div className="error">{err}</div>}
+          {err && <div className="error">{err}</div>}
 
-        <button className="btn btnPrimary" disabled={busy}>
-          {busy ? "נרשמת…" : "צרי חשבון"}
-        </button>
+          <button className="btn btnPrimary" disabled={busy}>
+            {busy ? "נרשמת…" : "צרי חשבון"}
+          </button>
 
-        <Link to="/login" className="muted">
-          כבר יש לך משתמש? התחברות
-        </Link>
-      </form>
+          <Link to="/login" className="muted">
+            כבר יש לך משתמש? התחברות
+          </Link>
+        </form>
+      </div>
     </div>
   );
 }

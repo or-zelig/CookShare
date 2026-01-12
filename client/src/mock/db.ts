@@ -2,7 +2,7 @@ export type User = {
   id: string;
   username: string;
   email: string;
-  avatarDataUrl?: string; // תמונה מקומית (base64)
+  avatarDataUrl?: string;
   password: string; // רק ל-Mock
 };
 
@@ -150,14 +150,22 @@ export const db = {
   },
 
   // -------- Posts --------
-  listPosts(args: { cursor?: number; limit: number; authorId?: string; likedByUserId?: string; textIncludes?: string[] }) {
+  listPosts(args: {
+    cursor?: number;
+    limit: number;
+    authorId?: string;
+    likedByUserId?: string;
+    textIncludes?: string[];
+  }) {
     const s = getState();
     let posts = [...s.posts].sort((a, b) => b.createdAt - a.createdAt);
 
     if (args.authorId) posts = posts.filter((p) => p.authorId === args.authorId);
+
+    // ✅ guard שמצמצם טיפוס לפני includes
     if (args.likedByUserId) {
-     const uid = args.likedByUserId;
-     posts = posts.filter((p) => p.likedBy.includes(uid));
+      const uid = args.likedByUserId;
+      posts = posts.filter((p) => p.likedBy.includes(uid));
     }
 
     if (args.textIncludes?.length) {
