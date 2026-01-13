@@ -10,6 +10,7 @@ export default function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -19,7 +20,7 @@ export default function Register() {
 
     if (!username.trim()) return setErr("שם משתמש חובה");
     if (!email.trim()) return setErr("אימייל חובה");
-    if (password.length < 4) return setErr("סיסמה קצרה מדי (מינימום 4)");
+    if (password.length < 6) return setErr("סיסמה חייבת להיות לפחות 6 תווים");
     if (password !== confirm) return setErr("הסיסמאות לא תואמות");
 
     setBusy(true);
@@ -37,9 +38,6 @@ export default function Register() {
     <div className="authLayout">
       <div className="card authCard">
         <h2 style={{ marginTop: 0 }}>הרשמה</h2>
-        <p className="muted" style={{ marginTop: 0 }}>
-          Mock בלבד — יוצר משתמש מקומי בדפדפן.
-        </p>
 
         <form className="col" onSubmit={onSubmit}>
           <input

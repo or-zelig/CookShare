@@ -48,8 +48,8 @@ export default function ProfileMe() {
 
         <div className="row" style={{ gap: 14 }}>
           <div className="avatarLg">
-            {me.avatarDataUrl ? (
-              <img src={me.avatarDataUrl} alt="" />
+            {me.avatarUrl ? (
+              <img src={me.avatarUrl} alt="" />
             ) : (
               <span>{myUsername[0]}</span>
             )}

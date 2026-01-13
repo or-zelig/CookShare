@@ -5,7 +5,8 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import { db, type User } from "../mock/db";
+import { api } from "../api/http";
+import type { User } from "../types/models";
 
 type AuthState = {
   user: User | null;
@@ -16,6 +17,7 @@ type AuthState = {
     email: string,
     password: string
   ) => Promise<void>;
+  loginWithGoogle: (credential: string) => Promise<void>;
   logout: () => Promise<void>;
 };
 
@@ -25,31 +27,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  async function restore() {
+    try {
+      const me = await api.me(); // כולל refresh אוטומטי ב-http.ts
+      setUser(me);
+    } catch {
+      setUser(null);
+    }
+  }
+
   useEffect(() => {
-    setLoading(true);
-    setUser(db.getCurrentUser());
-    setLoading(false);
+    (async () => {
+      setLoading(true);
+      await restore();
+      setLoading(false);
+    })();
   }, []);
 
   async function login(username: string, password: string) {
-    const u = db.login(username, password);
-    setUser(u);
+    await api.login(username, password);
+    await restore();
   }
 
   async function register(username: string, email: string, password: string) {
-    const u = db.register(username, email, password);
-    setUser(u);
+    await api.register(username, email, password);
+    await restore();
+  }
+
+  async function loginWithGoogle(credential: string) {
+    await api.google(credential);
+    await restore();
   }
 
   async function logout() {
-    db.logout();
+    try {
+      await api.logout();
+    } catch {}
+    sessionStorage.removeItem("accessToken");
     setUser(null);
   }
 
   const value = useMemo(
-    () => ({ user, loading, login, register, logout }),
+    () => ({ user, loading, login, register, loginWithGoogle, logout }),
     [user, loading]
   );
+
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
 }
 

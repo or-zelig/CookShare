@@ -1,6 +1,12 @@
 export type User = {
   id: string;
   username: string;
+
+  // החדש (מהשרת)
+  email?: string;
+  avatarUrl?: string;
+
+  // תאימות לקוד ישן (אם קיים)
   imageUrl?: string;
 };
 
@@ -21,9 +27,4 @@ export type Comment = {
   author: User;
   text: string;
   createdAt: string;
-};
-
-export type AuthTokens = {
-  accessToken: string;
-  refreshToken?: string;
 };
