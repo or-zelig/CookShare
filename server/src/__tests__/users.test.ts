@@ -52,10 +52,28 @@ describe("Users API", () => {
     return request(app).post(`/posts/${postId}/like`).set(auth(t));
   }
 
+  it("GET /users/:id returns public profile", async () => {
+    const res = await request(app).get(`/users/${user1Id}`);
+    expect(res.status).toBe(200);
+    expect(res.body.user.username).toBe("u1");
+    expect(res.body.user.avatarUrl).toBeDefined();
+  });
+
+  it("PATCH /users/me updates username (multipart)", async () => {
+    const res = await request(app).patch("/users/me").set(auth(token1)).field("username", "u1-new");
+    expect(res.status).toBe(200);
+    expect(res.body.user.username).toBe("u1-new");
+
+    // Ensure uniqueness is enforced.
+    const conflict = await request(app).patch("/users/me").set(auth(token1)).field("username", "u2");
+    expect(conflict.status).toBe(409);
+  });
+
   it("GET /users/:id/posts includes commentCount/likeCount/likedByMe", async () => {
     const created = await createPostJson(token1, { title: "User Meta", isPublic: true });
     const id = created.body.post._id ?? created.body.post.id;
 
+    // Create activity so counts are non-zero.
     const comment = await createComment(token2, id, "Nice");
     expect(comment.status).toBe(201);
 
