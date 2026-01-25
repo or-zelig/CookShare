@@ -3,10 +3,10 @@ export const openApiSpec = {
   info: {
     title: "CookShare API",
     version: "1.0.0",
-    description: "CookShare backend API (Auth + Posts).",
+    description: "CookShare backend API (Auth + Posts + Users).",
   },
   servers: [{ url: "http://localhost:4000" }],
-  tags: [{ name: "Auth" }, { name: "Posts" }],
+  tags: [{ name: "Auth" }, { name: "Posts" }, { name: "Users" }],
   components: {
     securitySchemes: {
       bearerAuth: { type: "http", scheme: "bearer", bearerFormat: "JWT" },
@@ -32,13 +32,52 @@ export const openApiSpec = {
         required: ["_id", "username", "email"],
       },
 
+      UserSummary: {
+        type: "object",
+        properties: {
+          _id: { type: "string", example: "65f1c9e7c7b7b5b2e9d2a111" },
+          username: { type: "string", example: "sir" },
+          avatarUrl: { type: "string", example: "https://..." },
+        },
+        required: ["_id", "username"],
+      },
+
+      UserPublicId: {
+        type: "object",
+        properties: {
+          id: { type: "string", example: "65f1c9e7c7b7b5b2e9d2a111" },
+          username: { type: "string", example: "sir" },
+          email: { type: "string", example: "sir@test.com" },
+          avatarUrl: { type: "string", example: "https://..." },
+        },
+        required: ["id", "username", "email"],
+      },
+
       AuthResponse: {
         type: "object",
         properties: {
           user: { $ref: "#/components/schemas/UserPublic" },
           accessToken: { type: "string", example: "eyJhbGciOi..." },
+          accessTokenExpiresAt: { type: "string", format: "date-time" },
+        },
+        required: ["user", "accessToken", "accessTokenExpiresAt"],
+      },
+
+      RefreshResponse: {
+        type: "object",
+        properties: {
+          user: { $ref: "#/components/schemas/UserPublicId" },
+          accessToken: { type: "string", example: "eyJhbGciOi..." },
         },
         required: ["user", "accessToken"],
+      },
+
+      MeResponse: {
+        type: "object",
+        properties: {
+          user: { $ref: "#/components/schemas/UserPublicId" },
+        },
+        required: ["user"],
       },
 
       RegisterRequest: {
@@ -54,10 +93,24 @@ export const openApiSpec = {
       LoginRequest: {
         type: "object",
         properties: {
-          email: { type: "string", example: "sir@test.com" },
+          username: { type: "string", example: "sir" },
           password: { type: "string", example: "123456" },
         },
-        required: ["email", "password"],
+        required: ["username", "password"],
+      },
+
+      GoogleLoginRequest: {
+        type: "object",
+        properties: {
+          credential: { type: "string" },
+        },
+        required: ["credential"],
+      },
+
+      OkResponse: {
+        type: "object",
+        properties: { ok: { type: "boolean", example: true } },
+        required: ["ok"],
       },
 
       // --- Posts ---
@@ -87,7 +140,7 @@ export const openApiSpec = {
           author: {
             oneOf: [
               { type: "string", example: "65f1c9e7c7b7b5b2e9d2a111" },
-              { $ref: "#/components/schemas/UserPublic" },
+              { $ref: "#/components/schemas/UserSummary" },
             ],
             description: "Either ObjectId string or populated user object",
           },
@@ -205,6 +258,61 @@ export const openApiSpec = {
         properties: { ok: { type: "boolean", example: true } },
         required: ["ok"],
       },
+
+      Comment: {
+        type: "object",
+        properties: {
+          _id: { type: "string", example: "65f1c9e7c7b7b5b2e9d2b111" },
+          postId: { type: "string", example: "65f1c9e7c7b7b5b2e9d2a999" },
+          author: {
+            oneOf: [
+              { type: "string", example: "65f1c9e7c7b7b5b2e9d2a111" },
+              { $ref: "#/components/schemas/UserSummary" },
+            ],
+          },
+          text: { type: "string", example: "Looks great!" },
+          createdAt: { type: "string", format: "date-time" },
+          updatedAt: { type: "string", format: "date-time" },
+        },
+        required: ["_id", "postId", "author", "text", "createdAt", "updatedAt"],
+      },
+
+      CommentCreateRequest: {
+        type: "object",
+        properties: {
+          text: { type: "string", example: "Looks great!" },
+        },
+        required: ["text"],
+      },
+
+      CommentResponse: {
+        type: "object",
+        properties: { comment: { $ref: "#/components/schemas/Comment" } },
+        required: ["comment"],
+      },
+
+      CommentListResponse: {
+        type: "object",
+        properties: {
+          comments: { type: "array", items: { $ref: "#/components/schemas/Comment" } },
+          nextCursor: { type: ["string", "null"], example: "65f1c9e7c7b7b5b2e9d2b111" },
+        },
+        required: ["comments", "nextCursor"],
+      },
+
+      UpdateUserMultipart: {
+        type: "object",
+        properties: {
+          username: { type: "string", example: "newname" },
+          avatar: { type: "string", format: "binary" },
+        },
+      },
+
+      UserSummaryResponse: {
+        type: "object",
+        properties: { user: { $ref: "#/components/schemas/UserSummary" } },
+        required: ["user"],
+      },
     },
   },
 
@@ -233,6 +341,10 @@ export const openApiSpec = {
             description: "Bad request",
             content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
           },
+          "409": {
+            description: "User already exists",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+          },
         },
       },
     },
@@ -253,6 +365,91 @@ export const openApiSpec = {
             content: {
               "application/json": { schema: { $ref: "#/components/schemas/AuthResponse" } },
             },
+          },
+          "400": {
+            description: "Bad request",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+          },
+          "401": {
+            description: "Unauthorized",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+          },
+        },
+      },
+    },
+
+    "/auth/refresh": {
+      post: {
+        tags: ["Auth"],
+        summary: "Rotate refresh token and issue new access token",
+        responses: {
+          "200": {
+            description: "OK",
+            content: {
+              "application/json": { schema: { $ref: "#/components/schemas/RefreshResponse" } },
+            },
+          },
+          "401": {
+            description: "Unauthorized",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+          },
+          "403": {
+            description: "Refresh token reuse detected",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+          },
+        },
+      },
+    },
+
+    "/auth/logout": {
+      post: {
+        tags: ["Auth"],
+        summary: "Logout (clear refresh token cookie)",
+        responses: {
+          "200": {
+            description: "OK",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/OkResponse" } } },
+          },
+        },
+      },
+    },
+
+    "/auth/me": {
+      get: {
+        tags: ["Auth"],
+        summary: "Get current user",
+        security: [{ bearerAuth: [] }],
+        responses: {
+          "200": {
+            description: "OK",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/MeResponse" } } },
+          },
+          "401": {
+            description: "Unauthorized",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+          },
+          "404": {
+            description: "Not found",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+          },
+        },
+      },
+    },
+
+    "/auth/google": {
+      post: {
+        tags: ["Auth"],
+        summary: "Login with Google credential",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": { schema: { $ref: "#/components/schemas/GoogleLoginRequest" } },
+          },
+        },
+        responses: {
+          "200": {
+            description: "OK",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/AuthResponse" } } },
           },
           "400": {
             description: "Bad request",
@@ -489,6 +686,277 @@ export const openApiSpec = {
           },
           "404": {
             description: "Not found",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+          },
+        },
+      },
+    },
+
+    "/posts/{id}/comments": {
+      post: {
+        tags: ["Posts"],
+        summary: "Create comment on post",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": { schema: { $ref: "#/components/schemas/CommentCreateRequest" } },
+          },
+        },
+        responses: {
+          "201": {
+            description: "Created",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/CommentResponse" } } },
+          },
+          "400": {
+            description: "Bad request",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+          },
+          "401": {
+            description: "Unauthorized",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+          },
+          "404": {
+            description: "Post not found",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+          },
+        },
+      },
+      get: {
+        tags: ["Posts"],
+        summary: "List comments for post",
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+          },
+          {
+            name: "limit",
+            in: "query",
+            required: false,
+            schema: { type: "integer", minimum: 1, maximum: 50, default: 20 },
+          },
+          {
+            name: "cursor",
+            in: "query",
+            required: false,
+            schema: { type: "string" },
+          },
+        ],
+        responses: {
+          "200": {
+            description: "OK",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/CommentListResponse" } } },
+          },
+          "400": {
+            description: "Invalid id",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+          },
+        },
+      },
+    },
+
+    "/comments/{id}": {
+      delete: {
+        tags: ["Posts"],
+        summary: "Delete comment (owner only)",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+          },
+        ],
+        responses: {
+          "200": {
+            description: "OK",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/OkResponse" } } },
+          },
+          "400": {
+            description: "Invalid id",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+          },
+          "401": {
+            description: "Unauthorized",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+          },
+          "403": {
+            description: "Forbidden",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+          },
+          "404": {
+            description: "Not found",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+          },
+        },
+      },
+    },
+
+    "/posts/{id}/like": {
+      post: {
+        tags: ["Posts"],
+        summary: "Like a post (idempotent)",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+          },
+        ],
+        responses: {
+          "200": {
+            description: "OK",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/OkResponse" } } },
+          },
+          "400": {
+            description: "Invalid id",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+          },
+          "401": {
+            description: "Unauthorized",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+          },
+          "404": {
+            description: "Post not found",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+          },
+        },
+      },
+      delete: {
+        tags: ["Posts"],
+        summary: "Unlike a post",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+          },
+        ],
+        responses: {
+          "200": {
+            description: "OK",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/OkResponse" } } },
+          },
+          "400": {
+            description: "Invalid id",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+          },
+          "401": {
+            description: "Unauthorized",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+          },
+        },
+      },
+    },
+
+    "/users/{id}": {
+      get: {
+        tags: ["Users"],
+        summary: "Get user profile",
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+          },
+        ],
+        responses: {
+          "200": {
+            description: "OK",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/UserSummaryResponse" } } },
+          },
+          "400": {
+            description: "Invalid id",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+          },
+          "404": {
+            description: "Not found",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+          },
+        },
+      },
+    },
+
+    "/users/me": {
+      patch: {
+        tags: ["Users"],
+        summary: "Update my profile",
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "multipart/form-data": { schema: { $ref: "#/components/schemas/UpdateUserMultipart" } },
+          },
+        },
+        responses: {
+          "200": {
+            description: "OK",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/UserSummaryResponse" } } },
+          },
+          "401": {
+            description: "Unauthorized",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+          },
+          "404": {
+            description: "Not found",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+          },
+          "409": {
+            description: "Username already taken",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+          },
+        },
+      },
+    },
+
+    "/users/{id}/posts": {
+      get: {
+        tags: ["Users"],
+        summary: "List posts by user (public; includes private when authed as same user)",
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+          },
+          {
+            name: "limit",
+            in: "query",
+            required: false,
+            schema: { type: "integer", minimum: 1, maximum: 50, default: 20 },
+          },
+          {
+            name: "cursor",
+            in: "query",
+            required: false,
+            schema: { type: "string" },
+          },
+        ],
+        responses: {
+          "200": {
+            description: "OK",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/FeedResponse" } } },
+          },
+          "400": {
+            description: "Invalid id",
             content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
           },
         },
