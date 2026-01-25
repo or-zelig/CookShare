@@ -8,6 +8,7 @@ import { Post } from "../models/Post";
 import { requireAuth, AuthedRequest } from "../middlewares/requireAuth";
 import { tryAuth } from "../middlewares/tryAuth";
 import { upload } from "../middlewares/upload";
+import { attachPostMeta } from "./postMeta";
 
 export const usersRouter = Router();
 
@@ -83,7 +84,9 @@ usersRouter.get("/users/:id/posts", tryAuth, async (req: AuthedRequest, res: Res
 
   const hasMore = posts.length > limit;
   const page = hasMore ? posts.slice(0, limit) : posts;
+  const pageOut = page.map((p) => (typeof (p as any).toObject === "function" ? (p as any).toObject() : p));
+  const postsWithMeta = await attachPostMeta(pageOut, req.userId);
   const nextCursor = hasMore ? String(page[page.length - 1]._id) : null;
 
-  return res.json({ posts: page, nextCursor });
+  return res.json({ posts: postsWithMeta, nextCursor });
 });

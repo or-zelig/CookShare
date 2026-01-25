@@ -6,8 +6,10 @@ import path from "path";
 import { Post, type Ingredient, type Step } from "../models/Post";
 import { upload } from "../middlewares/upload";
 import { requireAuth, AuthedRequest } from "../middlewares/requireAuth";
+import { tryAuth } from "../middlewares/tryAuth";
 import { Comment } from "../models/Comment";
 import { PostLike } from "../models/PostLike";
+import { attachPostMeta } from "./postMeta";
 
 export const postsRouter = Router();
 
@@ -252,7 +254,7 @@ postsRouter.post(
  * Public feed (no auth required)
  * Query: limit=1..50, cursor=<postId>, q=<search>
  */
-postsRouter.get("/posts/feed", async (req, res) => {
+postsRouter.get("/posts/feed", tryAuth, async (req: AuthedRequest, res: Response) => {
   const limit = toInt(req.query.limit, 20, 1, 50);
   const cursor = single(req.query.cursor);
   const q = single(req.query.q)?.trim();
@@ -278,9 +280,11 @@ postsRouter.get("/posts/feed", async (req, res) => {
 
   const hasMore = posts.length > limit;
   const page = hasMore ? posts.slice(0, limit) : posts;
+  const pageOut = page.map((p) => (typeof (p as any).toObject === "function" ? (p as any).toObject() : p));
+  const postsWithMeta = await attachPostMeta(pageOut, req.userId);
   const nextCursor = hasMore ? String(page[page.length - 1]._id) : null;
 
-  return res.json({ posts: page, nextCursor });
+  return res.json({ posts: postsWithMeta, nextCursor });
 });
 
 
@@ -302,9 +306,11 @@ postsRouter.get("/posts/mine", requireAuth, async (req: AuthedRequest, res: Resp
 
   const hasMore = posts.length > limit;
   const page = hasMore ? posts.slice(0, limit) : posts;
+  const pageOut = page.map((p) => (typeof (p as any).toObject === "function" ? (p as any).toObject() : p));
+  const postsWithMeta = await attachPostMeta(pageOut, req.userId);
   const nextCursor = hasMore ? String(page[page.length - 1]._id) : null;
 
-  return res.json({ posts: page, nextCursor });
+  return res.json({ posts: postsWithMeta, nextCursor });
 });
 
 /**
@@ -312,7 +318,7 @@ postsRouter.get("/posts/mine", requireAuth, async (req: AuthedRequest, res: Resp
  * Get single post
  * If private -> only owner can view
  */
-postsRouter.get("/posts/:id", async (req, res) => {
+postsRouter.get("/posts/:id", tryAuth, async (req: AuthedRequest, res: Response) => {
   const id = req.params.id;
   if (!mongoose.isValidObjectId(id)) {
     return res.status(400).json({ message: "invalid id" });
@@ -325,7 +331,11 @@ postsRouter.get("/posts/:id", async (req, res) => {
     return res.status(403).json({ message: "Forbidden" });
   }
 
-  return res.json({ post });
+  const [withMeta] = await attachPostMeta(
+    [typeof (post as any).toObject === "function" ? (post as any).toObject() : post],
+    req.userId
+  );
+  return res.json({ post: withMeta });
 });
 
 
