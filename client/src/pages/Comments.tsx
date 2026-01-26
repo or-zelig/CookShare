@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { db } from "../mock/db";
 import { useAuth } from "../auth/AuthContext";
@@ -17,12 +17,62 @@ export default function Comments() {
   const postId = id ?? "";
   const { user } = useAuth();
 
-  const post = db.getPost(postId);
-  const author = post ? db.getUser(post.authorId) : null;
-
+  const [post, setPost] = useState<Awaited<ReturnType<typeof db.getPost>> | null>(null);
+  const [author, setAuthor] = useState<ReturnType<typeof db.getUser> | null>(null);
   const [text, setText] = useState("");
+  const [comments, setComments] = useState<Awaited<ReturnType<typeof db.listComments>>["comments"]>([]);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const comments = useMemo(() => db.listComments(postId), [postId, text]); // re-render ok for mock
+  useEffect(() => {
+    let mounted = true;
+    setLoading(true);
+    (async () => {
+      try {
+        const p = await db.getPost(postId);
+        if (mounted) {
+          setPost(p);
+          setAuthor(
+            p?.author
+              ? {
+                  id: p.author.id,
+                  username: p.author.username,
+                  email: "",
+                  avatarDataUrl: p.author.avatarUrl,
+                  password: "",
+                }
+              : null
+          );
+        }
+
+        const res = await db.listComments(postId, { limit: 20, cursor: null });
+        if (!mounted) return;
+        setComments(res.comments);
+        setCursor(res.nextCursor);
+      } catch {
+        if (!mounted) return;
+        setPost(null);
+        setAuthor(null);
+        setComments([]);
+        setCursor(null);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, [postId]);
+
+  if (!post && loading) {
+    return (
+      <div className="card">
+        <h2>Comments</h2>
+        <p className="muted">Loading…</p>
+      </div>
+    );
+  }
 
   if (!post) {
     return (
@@ -36,15 +86,20 @@ export default function Comments() {
     );
   }
 
-  function add() {
+  async function add() {
     if (!text.trim()) return;
-    db.addComment(postId, text.trim());
+    await db.addComment(postId, text.trim());
     setText("");
+    const res = await db.listComments(postId, { limit: 20, cursor: null });
+    setComments(res.comments);
+    setCursor(res.nextCursor);
   }
 
-  function del(commentId: string) {
-    db.deleteComment(commentId);
-    setText((t) => t); // trigger rerender
+  async function del(commentId: string) {
+    await db.deleteComment(commentId);
+    const res = await db.listComments(postId, { limit: 20, cursor: null });
+    setComments(res.comments);
+    setCursor(res.nextCursor);
   }
 
   return (
@@ -91,8 +146,18 @@ export default function Comments() {
         </div>
       </div>
 
+      {loading && <div className="card muted">Loading…</div>}
+
       {comments.map((c) => {
-        const u = db.getUser(c.authorId);
+        const u = c.author
+          ? {
+              id: c.author.id,
+              username: c.author.username,
+              email: "",
+              avatarDataUrl: c.author.avatarUrl,
+              password: "",
+            }
+          : null;
         const mine = !!user && c.authorId === user.id;
         return (
           <div className="card" key={c.id}>
@@ -129,6 +194,19 @@ export default function Comments() {
           </div>
         );
       })}
+
+      {cursor && (
+        <button
+          className="btn"
+          onClick={async () => {
+            const res = await db.listComments(postId, { limit: 20, cursor });
+            setComments((prev) => [...prev, ...res.comments]);
+            setCursor(res.nextCursor);
+          }}
+        >
+          Load more
+        </button>
+      )}
     </div>
   );
 }

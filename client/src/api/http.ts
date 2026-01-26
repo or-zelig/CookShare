@@ -46,7 +46,7 @@ async function refreshAccessToken(): Promise<string | null> {
   return refreshPromise;
 }
 
-async function request<T>(
+export async function request<T>(
   path: string,
   init: RequestInit = {},
   opts: { retryOn401?: boolean } = {}
