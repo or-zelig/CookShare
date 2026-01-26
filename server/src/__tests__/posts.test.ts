@@ -60,6 +60,18 @@ describe("Posts API", () => {
     return request(app).post("/posts").set(auth(t)).send(body);
   }
 
+  async function createComment(t: string, postId: string, text: string) {
+    return request(app).post(`/posts/${postId}/comments`).set(auth(t)).send({ text });
+  }
+
+  async function likePost(t: string, postId: string) {
+    return request(app).post(`/posts/${postId}/like`).set(auth(t));
+  }
+
+  async function unlikePost(t: string, postId: string) {
+    return request(app).delete(`/posts/${postId}/like`).set(auth(t));
+  }
+
   it("POST /posts requires auth", async () => {
     const res = await request(app).post("/posts").send({ title: "X" });
     expect(res.status).toBe(401);
@@ -121,6 +133,47 @@ describe("Posts API", () => {
     expect(titles).not.toEqual(expect.arrayContaining(["Private"]));
   });
 
+  it("GET /posts/feed includes commentCount/likeCount/likedByMe", async () => {
+    const created = await createPostJson(token1, { title: "Meta", isPublic: true });
+    const id = created.body.post._id ?? created.body.post.id;
+
+    // Create activity so counts are non-zero.
+    const comment = await createComment(token2, id, "Nice");
+    expect(comment.status).toBe(201);
+
+    const like = await likePost(token1, id);
+    expect(like.status).toBe(200);
+
+    const feedNoAuth = await request(app).get("/posts/feed");
+    const noAuthPost = feedNoAuth.body.posts.find((p: any) => (p._id ?? p.id) === id);
+    expect(noAuthPost.commentCount).toBe(1);
+    expect(noAuthPost.likeCount).toBe(1);
+    expect(noAuthPost.likedByMe).toBe(false);
+
+    const feedAuth = await request(app).get("/posts/feed").set(auth(token1));
+    const authPost = feedAuth.body.posts.find((p: any) => (p._id ?? p.id) === id);
+    expect(authPost.commentCount).toBe(1);
+    expect(authPost.likeCount).toBe(1);
+    expect(authPost.likedByMe).toBe(true);
+  });
+
+  it("POST/DELETE /posts/:id/like toggles likedByMe", async () => {
+    const created = await createPostJson(token1, { title: "Like Toggle", isPublic: true });
+    const id = created.body.post._id ?? created.body.post.id;
+
+    const like = await likePost(token1, id);
+    expect(like.status).toBe(200);
+
+    const liked = await request(app).get(`/posts/${id}`).set(auth(token1));
+    expect(liked.body.post.likedByMe).toBe(true);
+
+    const unlike = await unlikePost(token1, id);
+    expect(unlike.status).toBe(200);
+
+    const unliked = await request(app).get(`/posts/${id}`).set(auth(token1));
+    expect(unliked.body.post.likedByMe).toBe(false);
+  });
+
   it("GET /posts/mine requires auth and returns only my posts (public + private)", async () => {
     await createPostJson(token1, { title: "Mine Public", isPublic: true });
     await createPostJson(token1, { title: "Mine Private", isPublic: false });
@@ -137,6 +190,24 @@ describe("Posts API", () => {
     expect(titles).not.toEqual(expect.arrayContaining(["Other"]));
   });
 
+  it("GET /posts/mine includes commentCount/likeCount/likedByMe", async () => {
+    const created = await createPostJson(token1, { title: "Mine Meta", isPublic: true });
+    const id = created.body.post._id ?? created.body.post.id;
+
+    const comment = await createComment(token2, id, "Yo");
+    expect(comment.status).toBe(201);
+
+    const like = await likePost(token2, id);
+    expect(like.status).toBe(200);
+
+    const mine = await request(app).get("/posts/mine").set(auth(token1));
+    expect(mine.status).toBe(200);
+    const minePost = mine.body.posts.find((p: any) => (p._id ?? p.id) === id);
+    expect(minePost.commentCount).toBe(1);
+    expect(minePost.likeCount).toBe(1);
+    expect(minePost.likedByMe).toBe(false);
+  });
+
   it("GET /posts/:id returns 200 for public, 403 for private", async () => {
     const pub = await createPostJson(token1, { title: "Pub", isPublic: true });
     const priv = await createPostJson(token1, { title: "Priv", isPublic: false });
@@ -150,6 +221,54 @@ describe("Posts API", () => {
 
     const getPriv = await request(app).get(`/posts/${privId}`);
     expect(getPriv.status).toBe(403);
+  });
+
+  it("GET /posts/:id includes commentCount/likeCount/likedByMe", async () => {
+    const created = await createPostJson(token1, { title: "Single Meta", isPublic: true });
+    const id = created.body.post._id ?? created.body.post.id;
+
+    const comment = await createComment(token2, id, "Hi");
+    expect(comment.status).toBe(201);
+
+    const like = await likePost(token1, id);
+    expect(like.status).toBe(200);
+
+    const noAuth = await request(app).get(`/posts/${id}`);
+    expect(noAuth.status).toBe(200);
+    expect(noAuth.body.post.commentCount).toBe(1);
+    expect(noAuth.body.post.likeCount).toBe(1);
+    expect(noAuth.body.post.likedByMe).toBe(false);
+
+    const withAuth = await request(app).get(`/posts/${id}`).set(auth(token1));
+    expect(withAuth.status).toBe(200);
+    expect(withAuth.body.post.likedByMe).toBe(true);
+  });
+
+  it("GET /posts/:id/comments paginates and DELETE /comments/:id enforces owner", async () => {
+    const created = await createPostJson(token1, { title: "Comments", isPublic: true });
+    const id = created.body.post._id ?? created.body.post.id;
+
+    const c1 = await createComment(token1, id, "First");
+    const c2 = await createComment(token1, id, "Second");
+    expect(c1.status).toBe(201);
+    expect(c2.status).toBe(201);
+
+    const page1 = await request(app).get(`/posts/${id}/comments?limit=1`);
+    expect(page1.status).toBe(200);
+    expect(page1.body.comments.length).toBe(1);
+    expect(page1.body.nextCursor).toBeTruthy();
+
+    const page2 = await request(app).get(`/posts/${id}/comments?limit=5&cursor=${page1.body.nextCursor}`);
+    expect(page2.status).toBe(200);
+    expect(page2.body.comments.length).toBeGreaterThanOrEqual(1);
+
+    const commentId = c1.body.comment._id ?? c1.body.comment.id;
+    const forbidden = await request(app).delete(`/comments/${commentId}`).set(auth(token2));
+    expect(forbidden.status).toBe(403);
+
+    const ok = await request(app).delete(`/comments/${commentId}`).set(auth(token1));
+    expect(ok.status).toBe(200);
+    expect(ok.body.ok).toBe(true);
   });
 
   it("PATCH /posts/:id updates post and normalizes steps order", async () => {

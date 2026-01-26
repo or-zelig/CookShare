@@ -7,6 +7,7 @@ import { notFound } from "./middlewares/notFound";
 import { errorHandler } from "./middlewares/errorHandler";
 import { setupSwagger } from "./swagger/setupSwagger";
 import postsRouter from "./routes/posts";
+import { usersRouter } from "./routes/users";
 import path from "path";
 
 export function createApp() {
@@ -28,6 +29,7 @@ export function createApp() {
   app.use("/uploads", express.static(path.resolve(process.cwd(), "uploads")));
 
    app.use(postsRouter);
+   app.use(usersRouter);
 
   app.use(notFound);
   app.use(errorHandler);

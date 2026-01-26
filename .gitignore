@@ -5,6 +5,9 @@
 **/dist/
 **/build/
 
+# user uploads
+**/uploads/
+
 # env files (never commit secrets)
 **/.env
 **/.env.*
