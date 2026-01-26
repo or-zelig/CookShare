@@ -8,6 +8,7 @@ import { errorHandler } from "./middlewares/errorHandler";
 import { setupSwagger } from "./swagger/setupSwagger";
 import postsRouter from "./routes/posts";
 import { usersRouter } from "./routes/users";
+import { aiRouter } from "./routes/ai";
 import path from "path";
 
 export function createApp() {
@@ -30,6 +31,7 @@ export function createApp() {
 
    app.use(postsRouter);
    app.use(usersRouter);
+   app.use(aiRouter);
 
   app.use(notFound);
   app.use(errorHandler);
