@@ -23,4 +23,14 @@ export const ENV = {
   GOOGLE_CLIENT_ID: must("GOOGLE_CLIENT_ID"),
 
   NODE_ENV: process.env.NODE_ENV || "development",
+
+  AI_RATE_LIMIT_RPM: Number(process.env.AI_RATE_LIMIT_RPM || 30),
+  AI_MAX_TOKENS_PER_MIN: Number(process.env.AI_MAX_TOKENS_PER_MIN || 8000),
+  AI_TIMEOUT_MS: Number(process.env.AI_TIMEOUT_MS || 4000),
+  AI_CACHE_TTL_MS: Number(process.env.AI_CACHE_TTL_MS || 120000),
+  AI_CONFIDENCE_MIN: Number(process.env.AI_CONFIDENCE_MIN || 0.5),
+  AI_MAX_RESULTS: Number(process.env.AI_MAX_RESULTS || 20),
+  AI_RETRIES: Number(process.env.AI_RETRIES || 1),
+  LLM_PROVIDER: process.env.LLM_PROVIDER || "mock",
+  LLM_MOCK_MODE: process.env.LLM_MOCK_MODE || "development",
 };
