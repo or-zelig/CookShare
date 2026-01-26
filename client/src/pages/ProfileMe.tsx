@@ -13,7 +13,7 @@ function readFileAsDataUrl(file: File): Promise<string> {
 }
 
 export default function ProfileMe() {
-  const { user } = useAuth();
+  const { user, refresh } = useAuth();
   const me = user;
 
   // ✅ חייב להיות לפני hooks + פתרון null
@@ -30,15 +30,16 @@ export default function ProfileMe() {
     setBusy(true);
     try {
       const url = await readFileAsDataUrl(file);
-      db.updateMe({ avatarDataUrl: url });
+      await db.updateMe({ avatarDataUrl: url });
+      await refresh();
     } finally {
       setBusy(false);
     }
   }
 
-  function save() {
-    db.updateMe({ username: username.trim() || myUsername });
-    alert("עודכן (Mock)");
+  async function save() {
+    await db.updateMe({ username: username.trim() || myUsername });
+    await refresh();
   }
 
   return (
@@ -81,7 +82,7 @@ export default function ProfileMe() {
             </div>
 
             <div className="muted" style={{ fontSize: 12 }}>
-              * לפי הדרישה: כאן עורכים רק תמונה ושם משתמש (Mock)
+              * לפי הדרישה: כאן עורכים רק תמונה ושם משתמש
             </div>
           </div>
         </div>
