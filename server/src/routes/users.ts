@@ -18,7 +18,7 @@ async function tryDeleteUploadedFile(url?: string) {
   const filename = url.replace("/uploads/", "");
   if (!filename) return;
 
-  const uploadsDir = path.resolve(process.cwd(), "uploads");
+  const uploadsDir = path.resolve(process.cwd(), "public", "uploads");
   const full = path.join(uploadsDir, filename);
   try {
     await fs.unlink(full);

@@ -201,7 +201,7 @@ async function tryDeleteUploadedFile(imageUrl?: string) {
   if (!filename) return;
 
   // adjust this if your uploads folder lives elsewhere
-  const uploadsDir = path.resolve(process.cwd(), "uploads");
+  const uploadsDir = path.resolve(process.cwd(), "public", "uploads");
   const full = path.join(uploadsDir, filename);
 
   try {
