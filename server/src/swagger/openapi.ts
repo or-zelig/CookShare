@@ -6,7 +6,7 @@ export const openApiSpec = {
     description: "CookShare backend API (Auth + Posts + Users).",
   },
   servers: [{ url: "http://localhost:4000" }],
-  tags: [{ name: "Auth" }, { name: "Posts" }, { name: "Users" }],
+  tags: [{ name: "Auth" }, { name: "Posts" }, { name: "Users" }, { name: "AI" }],
   components: {
     securitySchemes: {
       bearerAuth: { type: "http", scheme: "bearer", bearerFormat: "JWT" },
@@ -329,6 +329,54 @@ export const openApiSpec = {
         type: "object",
         properties: { user: { $ref: "#/components/schemas/UserSummary" } },
         required: ["user"],
+      },
+
+      AiSearchParseRequest: {
+        type: "object",
+        properties: {
+          query: { type: "string", example: "vegan pasta without dairy" },
+          locale: { type: "string", example: "en-US" },
+          maxResults: { type: "integer", minimum: 1, maximum: 50, example: 10 },
+        },
+        required: ["query"],
+      },
+
+      AiSearchFilters: {
+        type: "object",
+        properties: {
+          includeTerms: { type: "array", items: { type: "string" }, example: ["vegan", "pasta"] },
+          excludeTerms: { type: "array", items: { type: "string" }, example: ["dairy"] },
+          tags: { type: "array", items: { type: "string" }, example: ["vegan"] },
+          ingredients: { type: "array", items: { type: "string" }, example: ["pasta"] },
+          sort: { type: "string", enum: ["newest", "oldest", "relevance"], example: "relevance" },
+          isPublic: { type: "boolean", example: true },
+        },
+        required: ["includeTerms", "excludeTerms", "tags", "ingredients", "sort", "isPublic"],
+      },
+
+      AiSearchParseResponse: {
+        type: "object",
+        properties: {
+          requestId: { type: "string", example: "1f0c2c33-7f10-4c8b-9bfe-8a4b4d7a0000" },
+          normalizedQuery: { type: "string", example: "vegan pasta without dairy" },
+          filters: { $ref: "#/components/schemas/AiSearchFilters" },
+          warnings: { type: "array", items: { type: "string" }, example: ["Excluded term: dairy"] },
+          confidence: { type: "number", minimum: 0, maximum: 1, example: 0.7 },
+        },
+        required: ["requestId", "normalizedQuery", "filters", "warnings", "confidence"],
+      },
+
+      AiSearchResponse: {
+        type: "object",
+        properties: {
+          requestId: { type: "string", example: "1f0c2c33-7f10-4c8b-9bfe-8a4b4d7a0000" },
+          normalizedQuery: { type: "string", example: "vegan pasta without dairy" },
+          filters: { $ref: "#/components/schemas/AiSearchFilters" },
+          warnings: { type: "array", items: { type: "string" } },
+          confidence: { type: "number", minimum: 0, maximum: 1, example: 0.7 },
+          results: { type: "array", items: { $ref: "#/components/schemas/Post" } },
+        },
+        required: ["requestId", "normalizedQuery", "filters", "warnings", "confidence", "results"],
       },
     },
   },
@@ -974,6 +1022,78 @@ export const openApiSpec = {
           },
           "400": {
             description: "Invalid id",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+          },
+        },
+      },
+    },
+
+    "/v1/ai/search/parse": {
+      post: {
+        tags: ["AI"],
+        summary: "Parse free-text query into structured filters",
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": { schema: { $ref: "#/components/schemas/AiSearchParseRequest" } },
+          },
+        },
+        responses: {
+          "200": {
+            description: "OK",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/AiSearchParseResponse" } } },
+          },
+          "400": {
+            description: "Invalid body",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+          },
+          "422": {
+            description: "Low confidence or unparseable query",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/AiSearchParseResponse" } } },
+          },
+          "429": {
+            description: "Rate limit exceeded",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+          },
+          "503": {
+            description: "LLM failure",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+          },
+        },
+      },
+    },
+
+    "/v1/ai/search": {
+      post: {
+        tags: ["AI"],
+        summary: "Parse query and return matching posts",
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": { schema: { $ref: "#/components/schemas/AiSearchParseRequest" } },
+          },
+        },
+        responses: {
+          "200": {
+            description: "OK",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/AiSearchResponse" } } },
+          },
+          "400": {
+            description: "Invalid body",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+          },
+          "422": {
+            description: "Low confidence or unparseable query",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/AiSearchParseResponse" } } },
+          },
+          "429": {
+            description: "Rate limit exceeded",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+          },
+          "503": {
+            description: "LLM failure",
             content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
           },
         },
