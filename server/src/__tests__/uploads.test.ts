@@ -22,9 +22,9 @@ describe("Uploads API", () => {
 
     const res = await request(app).post("/uploads").attach("file", tempFile);
     expect(res.status).toBe(200);
-    expect(res.body.url).toMatch(/^\\/uploads\\//);
+    expect(res.body.url).toMatch(/^\/uploads\//);
     expect(res.body.filename).toBeTruthy();
-    expect(res.body.path).toMatch(/^uploads\\//);
+    expect(res.body.path).toMatch(/^uploads\//);
 
     const fileRes = await request(app).get(res.body.url);
     expect(fileRes.status).toBe(200);

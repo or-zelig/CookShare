@@ -1,4 +1,4 @@
-import { Router, Response } from "express";
+import { Router, Request, Response, NextFunction } from "express";
 import multer from "multer";
 import path from "path";
 import { upload } from "../middlewares/upload";
@@ -7,11 +7,7 @@ export const uploadsRouter = Router();
 
 const uploadSingle = upload.single("file");
 
-function handleUpload(
-  req: Express.Request,
-  res: Response,
-  next: (err?: unknown) => void
-) {
+function handleUpload(req: Request, res: Response, next: NextFunction) {
   uploadSingle(req, res, (err) => {
     if (!err) return next();
 
