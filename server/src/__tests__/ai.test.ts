@@ -48,7 +48,13 @@ describe("AI Search API", () => {
     await request(app)
       .post("/posts")
       .set(auth(token))
-      .send({ title: "Vegan Pasta", description: "Quick and easy", isPublic: true });
+      .send({
+        title: "Vegan Pasta",
+        description: "Quick and easy",
+        isPublic: true,
+        tags: ["vegan"],
+        ingredients: [{ name: "pasta" }],
+      });
 
     const res = await request(app)
       .post("/v1/ai/search")

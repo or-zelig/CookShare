@@ -2,6 +2,7 @@ import { ENV } from "../config/env";
 import { buildSystemPrompt, buildUserPrompt } from "./prompt";
 import type { LlmProvider, LlmParseArgs, LlmParseResult } from "./types";
 import { parseMock } from "./mockProvider";
+import { openAiProvider } from "./openaiProvider";
 
 function shouldMock() {
   const mode = ENV.LLM_MOCK_MODE;
@@ -28,6 +29,7 @@ const missingProvider: LlmProvider = {
 
 export function getLlmProvider(): LlmProvider {
   if (shouldMock()) return mockProvider;
+  if (ENV.LLM_PROVIDER === "openai") return openAiProvider;
   return missingProvider;
 }
 
@@ -47,7 +49,7 @@ export async function callProvider(
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
 
   try {
-    const res = await provider.parseQuery(args);
+    const res = await provider.parseQuery({ ...args, signal: ctrl.signal });
     return res;
   } finally {
     clearTimeout(timer);

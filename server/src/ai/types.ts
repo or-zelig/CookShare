@@ -41,6 +41,7 @@ export type LlmParseArgs = {
   locale?: string;
   maxResults: number;
   prompts: { system: string; user: string };
+  signal?: AbortSignal;
 };
 
 export type LlmProvider = {

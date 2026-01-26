@@ -31,6 +31,9 @@ export const ENV = {
   AI_CONFIDENCE_MIN: Number(process.env.AI_CONFIDENCE_MIN || 0.5),
   AI_MAX_RESULTS: Number(process.env.AI_MAX_RESULTS || 20),
   AI_RETRIES: Number(process.env.AI_RETRIES || 1),
+  AI_RESPONSE_MAX_TOKENS: Number(process.env.AI_RESPONSE_MAX_TOKENS || 600),
   LLM_PROVIDER: process.env.LLM_PROVIDER || "mock",
   LLM_MOCK_MODE: process.env.LLM_MOCK_MODE || "development",
+  OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+  OPENAI_MODEL: process.env.OPENAI_MODEL,
 };
