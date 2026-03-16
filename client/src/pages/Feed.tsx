@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { db, type Post, type User } from "../mock/db";
+import { api } from "../api/http";
 import { useAuth } from "../auth/AuthContext";
+import { db, type Post, type User } from "../mock/db";
 
 type Mode = "all" | "mine" | "liked";
 
@@ -11,15 +12,6 @@ function fmtTime(ms: number) {
     minute: "2-digit",
     day: "2-digit",
     month: "2-digit",
-  });
-}
-
-function readFileAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(String(r.result));
-    r.onerror = reject;
-    r.readAsDataURL(file);
   });
 }
 
@@ -35,9 +27,12 @@ export default function Feed() {
   const [composerOpen, setComposerOpen] = useState(false);
   const [editing, setEditing] = useState<Post | null>(null);
   const [text, setText] = useState("");
-  const [imageDataUrl, setImageDataUrl] = useState<string | undefined>(
+  const [imageUrl, setImageUrl] = useState<string | undefined>(undefined);
+  const [imageFile, setImageFile] = useState<File | undefined>(undefined);
+  const [imagePreview, setImagePreview] = useState<string | undefined>(
     undefined
   );
+  const [saving, setSaving] = useState(false);
 
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
@@ -48,6 +43,14 @@ export default function Feed() {
       return { authorId: undefined, likedByUserId: user.id };
     return { authorId: undefined, likedByUserId: undefined };
   }, [mode, user]);
+
+  useEffect(() => {
+    return () => {
+      if (imagePreview && imagePreview.startsWith("blob:")) {
+        URL.revokeObjectURL(imagePreview);
+      }
+    };
+  }, [imagePreview]);
 
   function refresh() {
     const res = db.listPosts({ limit: 5, cursor: 0, ...filterArgs });
@@ -89,42 +92,57 @@ export default function Feed() {
   function openCreate() {
     setEditing(null);
     setText("");
-    setImageDataUrl(undefined);
+    setImageUrl(undefined);
+    setImageFile(undefined);
+    setImagePreview(undefined);
     setComposerOpen(true);
   }
 
   function openEdit(p: Post) {
     setEditing(p);
     setText(p.text);
-    setImageDataUrl(p.imageDataUrl);
+    setImageUrl(p.imageDataUrl);
+    setImageFile(undefined);
+    setImagePreview(p.imageDataUrl);
     setComposerOpen(true);
   }
 
-  async function onPickImage(file?: File) {
+  function onPickImage(file?: File) {
     if (!file) return;
-    const url = await readFileAsDataUrl(file);
-    setImageDataUrl(url);
+    const url = URL.createObjectURL(file);
+    setImageFile(file);
+    setImagePreview(url);
   }
 
-  function onSave() {
-    if (!text.trim()) return alert("טקסט חובה");
+  async function onSave() {
+    if (!text.trim()) return alert("׳˜׳§׳¡׳˜ ׳—׳•׳‘׳”");
     if (!user) return;
 
-    if (!editing) {
-      db.createPost({ text: text.trim(), imageDataUrl });
-    } else {
-      db.updatePost(editing.id, {
-        text: text.trim(),
-        imageDataUrl: imageDataUrl ?? null,
-      });
-    }
+    setSaving(true);
+    try {
+      let nextImageUrl = imageUrl;
+      if (imageFile) {
+        nextImageUrl = await api.uploadImage(imageFile);
+      }
 
-    setComposerOpen(false);
-    refresh();
+      if (!editing) {
+        db.createPost({ text: text.trim(), imageDataUrl: nextImageUrl });
+      } else {
+        db.updatePost(editing.id, {
+          text: text.trim(),
+          imageDataUrl: nextImageUrl ?? null,
+        });
+      }
+
+      setComposerOpen(false);
+      refresh();
+    } finally {
+      setSaving(false);
+    }
   }
 
   function onDelete(p: Post) {
-    if (!confirm("למחוק את הפוסט?")) return;
+    if (!confirm("׳׳׳—׳•׳§ ׳׳× ׳”׳₪׳•׳¡׳˜?")) return;
     db.deletePost(p.id);
     refresh();
   }
@@ -144,7 +162,7 @@ export default function Feed() {
         <div className="row" style={{ justifyContent: "space-between" }}>
           <div>
             <h2 style={{ margin: 0 }}>Feed</h2>
-            <div className="muted">גלילה אינסופית + לייקים + תגובות (Mock)</div>
+            <div className="muted">׳’׳׳™׳׳” ׳׳™׳ ׳¡׳•׳₪׳™׳× + ׳׳™׳™׳§׳™׳ + ׳×׳’׳•׳‘׳•׳× (Mock)</div>
           </div>
 
           <div className="row">
@@ -152,23 +170,23 @@ export default function Feed() {
               className={`btn ${mode === "all" ? "btnPrimary" : ""}`}
               onClick={() => setMode("all")}
             >
-              כולם
+              ׳›׳•׳׳
             </button>
             <button
               className={`btn ${mode === "mine" ? "btnPrimary" : ""}`}
               onClick={() => setMode("mine")}
             >
-              שלי
+              ׳©׳׳™
             </button>
             <button
               className={`btn ${mode === "liked" ? "btnPrimary" : ""}`}
               onClick={() => setMode("liked")}
             >
-              לייקים
+              ׳׳™׳™׳§׳™׳
             </button>
 
             <button className="btn btnPrimary" onClick={openCreate}>
-              + פוסט חדש
+              + ׳₪׳•׳¡׳˜ ׳—׳“׳©
             </button>
           </div>
         </div>
@@ -207,10 +225,10 @@ export default function Feed() {
               {isMine && (
                 <div className="row">
                   <button className="btn" onClick={() => openEdit(p)}>
-                    עריכה
+                    ׳¢׳¨׳™׳›׳”
                   </button>
                   <button className="btn danger" onClick={() => onDelete(p)}>
-                    מחיקה
+                    ׳׳—׳™׳§׳”
                   </button>
                 </div>
               )}
@@ -230,11 +248,11 @@ export default function Feed() {
                 className={`btn ${likedByMe ? "btnPrimary" : ""}`}
                 onClick={() => toggleLike(p)}
               >
-                {likedByMe ? "❤️" : "🤍"} {p.likedBy.length}
+                {likedByMe ? "ג₪ן¸" : "נ₪"} {p.likedBy.length}
               </button>
 
               <Link className="btn" to={`/post/${p.id}/comments`}>
-                💬 {counts.commentsCount}
+                נ’¬ {counts.commentsCount}
               </Link>
             </div>
           </div>
@@ -242,8 +260,8 @@ export default function Feed() {
       })}
 
       <div ref={sentinelRef} style={{ height: 1 }} />
-      {loadingMore && <div className="card">טוען עוד…</div>}
-      {cursor == null && <div className="card muted">סוף הרשימה ✨</div>}
+      {loadingMore && <div className="card">׳˜׳•׳¢׳ ׳¢׳•׳“ג€¦</div>}
+      {cursor == null && <div className="card muted">׳¡׳•׳£ ׳”׳¨׳©׳™׳׳” ג¨</div>}
 
       {composerOpen && (
         <div
@@ -252,7 +270,7 @@ export default function Feed() {
         >
           <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
             <h3 style={{ marginTop: 0 }}>
-              {editing ? "עריכת פוסט" : "פוסט חדש"}
+              {editing ? "׳¢׳¨׳™׳›׳× ׳₪׳•׳¡׳˜" : "׳₪׳•׳¡׳˜ ׳—׳“׳©"}
             </h3>
 
             <textarea
@@ -260,29 +278,34 @@ export default function Feed() {
               style={{ minHeight: 110, resize: "vertical" }}
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder="מה בא לך לשתף?"
+              placeholder="׳׳” ׳‘׳ ׳׳ ׳׳©׳×׳£?"
             />
 
             <div className="row" style={{ justifyContent: "space-between" }}>
               <input
                 type="file"
                 accept="image/*"
+                disabled={saving}
                 onChange={(e) => void onPickImage(e.target.files?.[0])}
               />
 
               <div className="row">
                 <button className="btn" onClick={() => setComposerOpen(false)}>
-                  ביטול
+                  ׳‘׳™׳˜׳•׳
                 </button>
-                <button className="btn btnPrimary" onClick={onSave}>
-                  שמירה
+                <button
+                  className="btn btnPrimary"
+                  disabled={saving}
+                  onClick={onSave}
+                >
+                  ׳©׳׳™׳¨׳”
                 </button>
               </div>
             </div>
 
-            {imageDataUrl && (
+            {imagePreview && (
               <div className="postImageWrap" style={{ marginTop: 10 }}>
-                <img className="postImage" src={imageDataUrl} alt="" />
+                <img className="postImage" src={imagePreview} alt="" />
               </div>
             )}
           </div>

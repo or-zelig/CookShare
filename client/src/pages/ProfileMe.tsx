@@ -1,69 +1,85 @@
-import { useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { api } from "../api/http";
 import { useAuth } from "../auth/AuthContext";
 import { db } from "../mock/db";
-
-function readFileAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(String(r.result));
-    r.onerror = reject;
-    r.readAsDataURL(file);
-  });
-}
 
 export default function ProfileMe() {
   const { user } = useAuth();
   const me = user;
 
-  // ✅ חייב להיות לפני hooks + פתרון null
+  // ג… ׳—׳™׳™׳‘ ׳׳”׳™׳•׳× ׳׳₪׳ ׳™ hooks + ׳₪׳×׳¨׳•׳ null
   if (!me) return null;
 
-  // ✅ פתרון #2: צילום ערך שאחרי ה-guard הוא בוודאות string
+  // ג… ׳₪׳×׳¨׳•׳ #2: ׳¦׳™׳׳•׳ ׳¢׳¨׳ ׳©׳׳—׳¨׳™ ׳”-guard ׳”׳•׳ ׳‘׳•׳•׳“׳׳•׳× string
   const myUsername = me.username;
 
   const [username, setUsername] = useState(myUsername);
   const [busy, setBusy] = useState(false);
+  const [avatarFile, setAvatarFile] = useState<File | undefined>(undefined);
+  const [avatarPreview, setAvatarPreview] = useState<string | undefined>(
+    undefined
+  );
+  const [avatarUrl, setAvatarUrl] = useState(me.avatarUrl || "");
 
-  async function onPick(file?: File) {
+  useEffect(() => {
+    return () => {
+      if (avatarPreview && avatarPreview.startsWith("blob:")) {
+        URL.revokeObjectURL(avatarPreview);
+      }
+    };
+  }, [avatarPreview]);
+
+  function onPick(file?: File) {
     if (!file) return;
+    const url = URL.createObjectURL(file);
+    setAvatarFile(file);
+    setAvatarPreview(url);
+  }
+
+  async function save() {
+    const nextUsername = username.trim() || myUsername;
     setBusy(true);
     try {
-      const url = await readFileAsDataUrl(file);
-      db.updateMe({ avatarDataUrl: url });
+      let nextAvatarUrl = avatarUrl;
+      if (avatarFile) {
+        nextAvatarUrl = await api.uploadImage(avatarFile);
+      }
+      db.updateMe({ username: nextUsername, avatarDataUrl: nextAvatarUrl });
+      setAvatarUrl(nextAvatarUrl);
+      setAvatarFile(undefined);
+      setAvatarPreview(undefined);
+      alert("׳¢׳•׳“׳›׳ (Mock)");
     } finally {
       setBusy(false);
     }
   }
 
-  function save() {
-    db.updateMe({ username: username.trim() || myUsername });
-    alert("עודכן (Mock)");
-  }
+  const displayAvatar = avatarPreview || avatarUrl;
 
   return (
     <div className="col" style={{ gap: 14 }}>
       <div className="card">
-        <h2 style={{ marginTop: 0 }}>הפרופיל שלי</h2>
+        <h2 style={{ marginTop: 0 }}>׳”׳₪׳¨׳•׳₪׳™׳ ׳©׳׳™</h2>
 
         <div className="row" style={{ gap: 14 }}>
           <div className="avatarLg">
-            {me.avatarUrl ? (
-              <img src={me.avatarUrl} alt="" />
+            {displayAvatar ? (
+              <img src={displayAvatar} alt="" />
             ) : (
               <span>{myUsername[0]}</span>
             )}
           </div>
 
           <div className="col" style={{ flex: 1 }}>
-            <div className="muted">שם משתמש</div>
+            <div className="muted">׳©׳ ׳׳©׳×׳׳©</div>
             <input
               className="input"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
             />
 
-            <div className="muted">תמונה</div>
+            <div className="muted">׳×׳׳•׳ ׳”</div>
             <input
               type="file"
               accept="image/*"
@@ -73,25 +89,29 @@ export default function ProfileMe() {
 
             <div className="row" style={{ justifyContent: "space-between" }}>
               <Link className="btn" to="/feed">
-                חזרה לפיד
+                ׳—׳–׳¨׳” ׳׳₪׳™׳“
               </Link>
-              <button className="btn btnPrimary" onClick={save}>
-                שמירה
+              <button
+                className="btn btnPrimary"
+                disabled={busy}
+                onClick={save}
+              >
+                ׳©׳׳™׳¨׳”
               </button>
             </div>
 
             <div className="muted" style={{ fontSize: 12 }}>
-              * לפי הדרישה: כאן עורכים רק תמונה ושם משתמש (Mock)
+              * ׳׳₪׳™ ׳”׳“׳¨׳™׳©׳”: ׳›׳׳ ׳¢׳•׳¨׳›׳™׳ ׳¨׳§ ׳×׳׳•׳ ׳” ׳•׳©׳ ׳׳©׳×׳׳© (Mock)
             </div>
           </div>
         </div>
       </div>
 
       <div className="card">
-        <h3 style={{ marginTop: 0 }}>הפוסטים שלי</h3>
-        <p className="muted">בשלב הזה רואים את זה דרך פילטר “שלי” בפיד.</p>
+        <h3 style={{ marginTop: 0 }}>׳”׳₪׳•׳¡׳˜׳™׳ ׳©׳׳™</h3>
+        <p className="muted">׳‘׳©׳׳‘ ׳”׳–׳” ׳¨׳•׳׳™׳ ׳׳× ׳–׳” ׳“׳¨׳ ׳₪׳™׳׳˜׳¨ ג€׳©׳׳™ג€ ׳‘׳₪׳™׳“.</p>
         <Link className="btn" to="/feed">
-          עבורי לפיד
+          ׳¢׳‘׳•׳¨׳™ ׳׳₪׳™׳“
         </Link>
       </div>
     </div>

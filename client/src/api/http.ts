@@ -103,6 +103,15 @@ function mapUser(u: ServerUser) {
 }
 
 export const api = {
+  async uploadImage(file: File) {
+    const form = new FormData();
+    form.append("file", file);
+    const data = await request<{ url: string }>("/uploads", {
+      method: "POST",
+      body: form,
+    });
+    return data.url;
+  },
   async register(username: string, email: string, password: string) {
     const data = await request<{
       user: ServerUser;
