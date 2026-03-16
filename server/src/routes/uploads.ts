@@ -1,6 +1,5 @@
 import { Router, Request, Response, NextFunction } from "express";
 import multer from "multer";
-import path from "path";
 import { upload } from "../middlewares/upload";
 
 export const uploadsRouter = Router();
@@ -31,7 +30,6 @@ uploadsRouter.post("/uploads", handleUpload, (req, res) => {
 
   const filename = req.file.filename;
   const url = `/uploads/${filename}`;
-  const relativePath = path.posix.join("uploads", filename);
 
-  return res.json({ url, path: relativePath, filename });
+  return res.json({ url });
 });

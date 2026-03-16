@@ -23,14 +23,18 @@ describe("Uploads API", () => {
     const res = await request(app).post("/uploads").attach("file", tempFile);
     expect(res.status).toBe(200);
     expect(res.body.url).toMatch(/^\/uploads\//);
-    expect(res.body.filename).toBeTruthy();
-    expect(res.body.path).toMatch(/^uploads\//);
 
     const fileRes = await request(app).get(res.body.url);
     expect(fileRes.status).toBe(200);
 
     await fs.unlink(tempFile);
-    const uploadedPath = path.resolve(process.cwd(), "public", res.body.path);
+    const filename = String(res.body.url).replace(/^\/uploads\//, "");
+    const uploadedPath = path.resolve(
+      process.cwd(),
+      "public",
+      "uploads",
+      filename
+    );
     try {
       await fs.unlink(uploadedPath);
     } catch {
