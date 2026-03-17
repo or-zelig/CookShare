@@ -40,6 +40,7 @@ export default function Feed() {
   );
 
   const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const loadingMoreRef = useRef(false);
 
   const filterArgs = useMemo(() => {
     if (!user) return { authorId: undefined, likedByUserId: undefined };
@@ -81,15 +82,27 @@ export default function Feed() {
   }, [cursor, mode, user]);
 
   async function loadMore() {
-    if (cursor == null || loadingMore) return;
+    if (cursor == null || loadingMoreRef.current) return;
+    loadingMoreRef.current = true;
     setLoadingMore(true);
     try {
       const res = await fetchPage(cursor);
       const pageItems = "posts" in res ? res.posts : res.items;
-      setItems((prev) => [...prev, ...pageItems]);
+      setItems((prev) => {
+        const seen = new Set(prev.map((p) => p.id));
+        const merged = [...prev];
+        for (const item of pageItems) {
+          if (!seen.has(item.id)) {
+            seen.add(item.id);
+            merged.push(item);
+          }
+        }
+        return merged;
+      });
       setCursor(res.nextCursor);
     } finally {
       setLoadingMore(false);
+      loadingMoreRef.current = false;
     }
   }
 

@@ -15,6 +15,15 @@ const asyncHandler =
 
 export const authRouter = Router();
 
+function toPublicUser(user: { id: string; username: string; email?: string; avatarUrl?: string | null }) {
+  return {
+    id: user.id,
+    username: user.username,
+    email: user.email ?? "",
+    avatarUrl: user.avatarUrl ?? "",
+  };
+}
+
 function setRefreshCookie(res: any, refreshToken: string) {
   res.cookie("rt", refreshToken, {
     httpOnly: true,
@@ -64,7 +73,7 @@ authRouter.post("/auth/register", asyncHandler(async (req, res) => {
 const { token: accessToken, expiresAt: accessTokenExpiresAt } =
   signAccessToken(user.id, user.username);
 
-return res.status(201).json({ user, accessToken, accessTokenExpiresAt });
+return res.status(201).json({ user: toPublicUser(user), accessToken, accessTokenExpiresAt });
 }));
 
 authRouter.post("/auth/login", asyncHandler(async (req, res) => {
@@ -93,7 +102,7 @@ authRouter.post("/auth/login", asyncHandler(async (req, res) => {
 const { token: accessToken, expiresAt: accessTokenExpiresAt } =
   signAccessToken(user.id, user.username);
 
-return res.json({ user, accessToken, accessTokenExpiresAt });
+return res.json({ user: toPublicUser(user), accessToken, accessTokenExpiresAt });
 }));
 
 authRouter.post("/auth/refresh", asyncHandler(async (req, res) => {
@@ -135,10 +144,11 @@ user.refreshTokens.push({ jti, tokenHash: hashToken(newRefresh), expiresAt } as 
 await user.save();
 setRefreshCookie(res, newRefresh);
 
-const accessToken = signAccessToken(user.id, user.username);
+const { token: accessToken, expiresAt: accessTokenExpiresAt } = signAccessToken(user.id, user.username);
 return res.json({
-  user: { id: user.id, username: user.username, email: user.email, avatarUrl: user.avatarUrl || "" },
+  user: toPublicUser(user),
   accessToken,
+  accessTokenExpiresAt,
 });
 
 }));
@@ -173,9 +183,7 @@ authRouter.get("/auth/me", requireAuth, asyncHandler(async (req: AuthedRequest, 
     const user = await User.findById(req.userId).select("_id username email avatarUrl");
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    return res.json({
-      user: { id: user.id, username: user.username, email: user.email, avatarUrl: user.avatarUrl || "" },
-    });
+    return res.json({ user: toPublicUser(user) });
   })
 );
 
@@ -238,7 +246,7 @@ authRouter.post("/auth/google", async (req, res, next) => {
 const { token: accessToken, expiresAt: accessTokenExpiresAt } =
   signAccessToken(user.id, user.username);
 
-return res.json({ user, accessToken, accessTokenExpiresAt });
+return res.json({ user: toPublicUser(user), accessToken, accessTokenExpiresAt });
   } catch (err) {
     next(err);
   }

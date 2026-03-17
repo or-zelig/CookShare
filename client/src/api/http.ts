@@ -1,7 +1,8 @@
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 
 type ServerUser = {
-  id: string;
+  id?: string;
+  _id?: string;
   username: string;
   email?: string;
   avatarUrl?: string;
@@ -95,7 +96,7 @@ export async function request<T>(
 
 function mapUser(u: ServerUser) {
   return {
-    id: u.id,
+    id: u.id ?? u._id ?? "",
     username: u.username,
     email: u.email ?? "",
     avatarUrl: u.avatarUrl ?? "",
