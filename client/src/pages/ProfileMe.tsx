@@ -5,7 +5,7 @@ import { useAuth } from "../auth/AuthContext";
 import { db } from "../mock/db";
 
 export default function ProfileMe() {
-  const { user, refreshUser } = useAuth();
+  const { user, refresh } = useAuth();
   const me = user;
 
   // ✅ חייב להיות לפני hooks + פתרון null
@@ -41,6 +41,9 @@ export default function ProfileMe() {
     const nextUsername = username.trim() || myUsername;
     setBusy(true);
     try {
+      const url = await readFileAsDataUrl(file);
+      await db.updateMe({ avatarDataUrl: url });
+      await refresh();
       let nextAvatarUrl = avatarUrl;
       let uploadedUrl: string | undefined;
       if (avatarFile) {
@@ -62,6 +65,10 @@ export default function ProfileMe() {
     }
   }
 
+  async function save() {
+    await db.updateMe({ username: username.trim() || myUsername });
+    await refresh();
+  }
   const displayAvatar = avatarPreview || avatarUrl;
 
   return (
@@ -108,7 +115,7 @@ export default function ProfileMe() {
             </div>
 
             <div className="muted" style={{ fontSize: 12 }}>
-              * לפי הדרישה: כאן עורכים רק תמונה ושם משתמש (Mock)
+              * לפי הדרישה: כאן עורכים רק תמונה ושם משתמש
             </div>
           </div>
         </div>

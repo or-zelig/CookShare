@@ -56,7 +56,7 @@ export const openApiSpec = {
       AuthResponse: {
         type: "object",
         properties: {
-          user: { $ref: "#/components/schemas/UserPublic" },
+          user: { $ref: "#/components/schemas/UserPublicId" },
           accessToken: { type: "string", example: "eyJhbGciOi..." },
           accessTokenExpiresAt: { type: "string", format: "date-time" },
         },
@@ -68,8 +68,9 @@ export const openApiSpec = {
         properties: {
           user: { $ref: "#/components/schemas/UserPublicId" },
           accessToken: { type: "string", example: "eyJhbGciOi..." },
+          accessTokenExpiresAt: { type: "string", format: "date-time" },
         },
-        required: ["user", "accessToken"],
+        required: ["user", "accessToken", "accessTokenExpiresAt"],
       },
 
       MeResponse: {

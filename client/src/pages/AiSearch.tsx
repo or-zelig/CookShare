@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { db } from "../mock/db";
 
@@ -57,10 +57,21 @@ export default function AiSearch() {
   const [lastRun, setLastRun] = useState<number>(0);
   const [result, setResult] = useState<AiResult | null>(null);
 
-  const [cursor, setCursor] = useState<number | null>(0);
-  const [items, setItems] = useState(
-    () => db.listPosts({ limit: 5, cursor: 0 }).items
-  );
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [items, setItems] = useState<Awaited<ReturnType<typeof db.listPosts>>["items"]>([]);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      const res = await db.listPosts({ limit: 5, cursor: null });
+      if (!mounted) return;
+      setItems(res.items);
+      setCursor(res.nextCursor);
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const canRun = Date.now() - lastRun > COOLDOWN_MS;
 
@@ -71,7 +82,7 @@ export default function AiSearch() {
     );
   }, [items, result]);
 
-  function run() {
+  async function run() {
     if (!query.trim()) return;
     if (!canRun) return alert("חכי רגע לפני חיפוש נוסף (cooldown)");
 
@@ -87,14 +98,14 @@ export default function AiSearch() {
     setResult(r);
 
     // ריסט “פיד” בסיסי כדי שירגיש כמו חיפוש מחדש
-    const res = db.listPosts({ limit: 10, cursor: 0 });
+    const res = await db.listPosts({ limit: 10, cursor: null });
     setItems(res.items);
     setCursor(res.nextCursor);
   }
 
-  function loadMore() {
+  async function loadMore() {
     if (cursor == null) return;
-    const res = db.listPosts({ limit: 10, cursor });
+    const res = await db.listPosts({ limit: 10, cursor });
     setItems((prev) => [...prev, ...res.items]);
     setCursor(res.nextCursor);
   }
@@ -145,9 +156,9 @@ export default function AiSearch() {
         <div className="postCard" key={p.id}>
           <div className="postBody">
             <div className="postText">{p.text}</div>
-            {p.imageDataUrl && (
+            {(p.imageDataUrl || p.imageUrl) && (
               <div className="postImageWrap">
-                <img className="postImage" src={p.imageDataUrl} alt="" />
+                <img className="postImage" src={p.imageDataUrl ?? p.imageUrl} alt="" />
               </div>
             )}
           </div>

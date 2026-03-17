@@ -27,7 +27,7 @@ export default function Feed() {
 
   const [mode, setMode] = useState<Mode>("all");
   const [items, setItems] = useState<Post[]>([]);
-  const [cursor, setCursor] = useState<number | null>(0);
+  const [cursor, setCursor] = useState<number | string | null>(0);
   const [loadingMore, setLoadingMore] = useState(false);
   const [ready, setReady] = useState(false);
 
@@ -43,6 +43,7 @@ export default function Feed() {
   const [saving, setSaving] = useState(false);
 
   const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const loadingMoreRef = useRef(false);
 
   const filterArgs = useMemo(() => {
     if (!user) return { authorId: undefined, likedByUserId: undefined };
@@ -52,17 +53,15 @@ export default function Feed() {
     return { authorId: undefined, likedByUserId: undefined };
   }, [mode, user]);
 
-  useEffect(() => {
-    return () => {
-      if (imagePreview && imagePreview.startsWith("blob:")) {
-        URL.revokeObjectURL(imagePreview);
-      }
-    };
-  }, [imagePreview]);
+  async function fetchPage(nextCursor: number | string | null) {
+    if (mode === "all") return db.getFeed({ limit: 5, cursor: nextCursor });
+    if (mode === "mine") return db.getMyPosts({ limit: 5, cursor: nextCursor });
+    return db.listPosts({ limit: 5, cursor: nextCursor, ...filterArgs });
+  }
 
-  function refresh() {
-    const res = db.listPosts({ limit: 5, cursor: 0, ...filterArgs });
-    setItems(res.items);
+  async function refresh() {
+    const res = await fetchPage(0);
+    setItems("posts" in res ? res.posts : res.items);
     setCursor(res.nextCursor);
     setReady(true);
   }
@@ -87,14 +86,27 @@ export default function Feed() {
   }, [cursor, mode, user]);
 
   async function loadMore() {
-    if (!ready || cursor == null || loadingMore) return;
+    if (cursor == null || loadingMoreRef.current) return;
+    loadingMoreRef.current = true;
     setLoadingMore(true);
     try {
-      const res = db.listPosts({ limit: 5, cursor, ...filterArgs });
-      setItems((prev) => mergeUniquePosts(prev, res.items));
+      const res = await fetchPage(cursor);
+      const pageItems = "posts" in res ? res.posts : res.items;
+      setItems((prev) => {
+        const seen = new Set(prev.map((p) => p.id));
+        const merged = [...prev];
+        for (const item of pageItems) {
+          if (!seen.has(item.id)) {
+            seen.add(item.id);
+            merged.push(item);
+          }
+        }
+        return merged;
+      });
       setCursor(res.nextCursor);
     } finally {
       setLoadingMore(false);
+      loadingMoreRef.current = false;
     }
   }
 
@@ -127,22 +139,14 @@ export default function Feed() {
     if (!text.trim()) return alert("טקסט חובה");
     if (!user) return;
 
-    setSaving(true);
-    try {
-      let nextImageUrl = imageUrl;
-      if (imageFile) {
-        const uploadedUrl = await api.uploadImage(imageFile);
-        nextImageUrl = api.resolveMediaUrl(uploadedUrl);
-      }
-
-      if (!editing) {
-        db.createPost({ text: text.trim(), imageDataUrl: nextImageUrl });
-      } else {
-        db.updatePost(editing.id, {
-          text: text.trim(),
-          imageDataUrl: nextImageUrl ?? null,
-        });
-      }
+    if (!editing) {
+      await db.createPost({ title: text.trim(), imageDataUrl });
+    } else {
+      await db.updatePost(editing.id, {
+        title: text.trim(),
+        imageDataUrl: imageDataUrl ?? null,
+      });
+    }
 
       setComposerOpen(false);
       refresh();
@@ -151,19 +155,30 @@ export default function Feed() {
     }
   }
 
-  function onDelete(p: Post) {
+  async function onDelete(p: Post) {
     if (!confirm("למחוק את הפוסט?")) return;
-    db.deletePost(p.id);
+    await db.deletePost(p.id);
     refresh();
   }
 
-  function toggleLike(p: Post) {
-    db.toggleLike(p.id);
+  async function toggleLike(p: Post) {
+    if (p.likedByMe) {
+      await db.unlikePost(p.id);
+    } else {
+      await db.likePost(p.id);
+    }
     refresh();
   }
 
   function getAuthor(p: Post): User | null {
-    return db.getUser(p.authorId);
+    if (!p.author) return null;
+    return {
+      id: p.author.id,
+      username: p.author.username,
+      email: "",
+      avatarDataUrl: p.author.avatarUrl,
+      password: "",
+    };
   }
 
   return (
@@ -204,8 +219,8 @@ export default function Feed() {
 
       {items.map((p) => {
         const author = getAuthor(p);
-        const counts = db.getCounts(p.id);
-        const likedByMe = !!user && p.likedBy.includes(user.id);
+        const likedByMe = p.likedByMe ?? (!!user && p.likedBy.includes(user.id));
+        const likeCount = p.likeCount ?? p.likedBy.length;
         const isMine = !!user && p.authorId === user.id;
 
         return (
@@ -213,10 +228,10 @@ export default function Feed() {
             <div className="postHeader">
               <div className="row" style={{ gap: 10 }}>
                 <div className="avatar">
-                  {author?.avatarDataUrl ? (
-                    <img src={author.avatarDataUrl} alt="" />
+                  {author?.avatarDataUrl || p.author?.avatarUrl ? (
+                    <img src={author?.avatarDataUrl ?? p.author?.avatarUrl} alt="" />
                   ) : (
-                    <span>{author?.username?.[0] ?? "?"}</span>
+                    <span>{(author?.username ?? p.author?.username)?.[0] ?? "?"}</span>
                   )}
                 </div>
                 <div className="col" style={{ gap: 2 }}>
@@ -224,7 +239,7 @@ export default function Feed() {
                     to={`/profile/${author?.id ?? ""}`}
                     className="postAuthor"
                   >
-                    {author?.username ?? "Unknown"}
+                    {author?.username ?? p.author?.username ?? "Unknown"}
                   </Link>
                   <div className="muted" style={{ fontSize: 12 }}>
                     {fmtTime(p.createdAt)}
@@ -246,9 +261,9 @@ export default function Feed() {
 
             <div className="postBody">
               <div className="postText">{p.text}</div>
-              {p.imageDataUrl && (
+              {(p.imageDataUrl || p.imageUrl) && (
                 <div className="postImageWrap">
-                  <img className="postImage" src={p.imageDataUrl} alt="" />
+                  <img className="postImage" src={p.imageDataUrl ?? p.imageUrl} alt="" />
                 </div>
               )}
             </div>
@@ -258,11 +273,11 @@ export default function Feed() {
                 className={`btn ${likedByMe ? "btnPrimary" : ""}`}
                 onClick={() => toggleLike(p)}
               >
-                {likedByMe ? "❤️" : "🤍"} {p.likedBy.length}
+                {likedByMe ? "❤️" : "🤍"} {likeCount}
               </button>
 
               <Link className="btn" to={`/post/${p.id}/comments`}>
-                💬 {counts.commentsCount}
+                💬 {p.commentCount ?? 0}
               </Link>
             </div>
           </div>
