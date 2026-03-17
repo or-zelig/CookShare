@@ -42,10 +42,15 @@ export default function ProfileMe() {
     setBusy(true);
     try {
       let nextAvatarUrl = avatarUrl;
+      let uploadedUrl: string | undefined;
       if (avatarFile) {
-        nextAvatarUrl = await api.uploadImage(avatarFile);
+        uploadedUrl = await api.uploadImage(avatarFile);
+        nextAvatarUrl = api.resolveMediaUrl(uploadedUrl);
       }
-      await api.updateMe({ username: nextUsername, avatarUrl: nextAvatarUrl });
+      await api.updateMe({
+        username: nextUsername,
+        avatarUrl: uploadedUrl,
+      });
       await refreshUser();
       db.updateMe({ username: nextUsername, avatarDataUrl: nextAvatarUrl });
       setAvatarUrl(nextAvatarUrl);

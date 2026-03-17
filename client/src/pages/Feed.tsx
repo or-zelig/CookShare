@@ -131,7 +131,8 @@ export default function Feed() {
     try {
       let nextImageUrl = imageUrl;
       if (imageFile) {
-        nextImageUrl = await api.uploadImage(imageFile);
+        const uploadedUrl = await api.uploadImage(imageFile);
+        nextImageUrl = api.resolveMediaUrl(uploadedUrl);
       }
 
       if (!editing) {

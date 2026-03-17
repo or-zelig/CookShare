@@ -7,6 +7,12 @@ type ServerUser = {
   avatarUrl?: string;
 };
 
+function resolveMediaUrl(url?: string) {
+  if (!url) return "";
+  if (url.startsWith("/")) return `${API_URL}${url}`;
+  return url;
+}
+
 function getAccessToken() {
   return sessionStorage.getItem("accessToken") || "";
 }
@@ -98,11 +104,12 @@ function mapUser(u: ServerUser) {
     id: u.id,
     username: u.username,
     email: u.email ?? "",
-    avatarUrl: u.avatarUrl ?? "",
+    avatarUrl: resolveMediaUrl(u.avatarUrl),
   };
 }
 
 export const api = {
+  resolveMediaUrl,
   async uploadImage(file: File) {
     const form = new FormData();
     form.append("file", file);
