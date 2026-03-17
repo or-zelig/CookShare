@@ -5,7 +5,7 @@ import { useAuth } from "../auth/AuthContext";
 import { db } from "../mock/db";
 
 export default function ProfileMe() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const me = user;
 
   // ✅ חייב להיות לפני hooks + פתרון null
@@ -45,6 +45,8 @@ export default function ProfileMe() {
       if (avatarFile) {
         nextAvatarUrl = await api.uploadImage(avatarFile);
       }
+      await api.updateMe({ username: nextUsername, avatarUrl: nextAvatarUrl });
+      await refreshUser();
       db.updateMe({ username: nextUsername, avatarDataUrl: nextAvatarUrl });
       setAvatarUrl(nextAvatarUrl);
       setAvatarFile(undefined);

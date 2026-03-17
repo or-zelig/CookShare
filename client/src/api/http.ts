@@ -112,6 +112,15 @@ export const api = {
     });
     return data.url;
   },
+  async updateMe(data: { username?: string; avatarUrl?: string }) {
+    const payload: { username?: string; avatarUrl?: string } = {};
+    if (data.username) payload.username = data.username;
+    if (data.avatarUrl) payload.avatarUrl = data.avatarUrl;
+    return request<{ user: ServerUser }>("/users/me", {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    });
+  },
   async register(username: string, email: string, password: string) {
     const data = await request<{
       user: ServerUser;
