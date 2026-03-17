@@ -8,10 +8,10 @@ export default function ProfileMe() {
   const { user } = useAuth();
   const me = user;
 
-  // ג… ׳—׳™׳™׳‘ ׳׳”׳™׳•׳× ׳׳₪׳ ׳™ hooks + ׳₪׳×׳¨׳•׳ null
+  // ✅ חייב להיות לפני hooks + פתרון null
   if (!me) return null;
 
-  // ג… ׳₪׳×׳¨׳•׳ #2: ׳¦׳™׳׳•׳ ׳¢׳¨׳ ׳©׳׳—׳¨׳™ ׳”-guard ׳”׳•׳ ׳‘׳•׳•׳“׳׳•׳× string
+  // ✅ פתרון #2: צילום ערך שאחרי ה-guard הוא בוודאות string
   const myUsername = me.username;
 
   const [username, setUsername] = useState(myUsername);
@@ -49,7 +49,7 @@ export default function ProfileMe() {
       setAvatarUrl(nextAvatarUrl);
       setAvatarFile(undefined);
       setAvatarPreview(undefined);
-      alert("׳¢׳•׳“׳›׳ (Mock)");
+      alert("עודכן (Mock)");
     } finally {
       setBusy(false);
     }
@@ -60,7 +60,7 @@ export default function ProfileMe() {
   return (
     <div className="col" style={{ gap: 14 }}>
       <div className="card">
-        <h2 style={{ marginTop: 0 }}>׳”׳₪׳¨׳•׳₪׳™׳ ׳©׳׳™</h2>
+        <h2 style={{ marginTop: 0 }}>הפרופיל שלי</h2>
 
         <div className="row" style={{ gap: 14 }}>
           <div className="avatarLg">
@@ -72,14 +72,14 @@ export default function ProfileMe() {
           </div>
 
           <div className="col" style={{ flex: 1 }}>
-            <div className="muted">׳©׳ ׳׳©׳×׳׳©</div>
+            <div className="muted">שם משתמש</div>
             <input
               className="input"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
             />
 
-            <div className="muted">׳×׳׳•׳ ׳”</div>
+            <div className="muted">תמונה</div>
             <input
               type="file"
               accept="image/*"
@@ -89,29 +89,29 @@ export default function ProfileMe() {
 
             <div className="row" style={{ justifyContent: "space-between" }}>
               <Link className="btn" to="/feed">
-                ׳—׳–׳¨׳” ׳׳₪׳™׳“
+                חזרה לפיד
               </Link>
               <button
                 className="btn btnPrimary"
                 disabled={busy}
                 onClick={save}
               >
-                ׳©׳׳™׳¨׳”
+                שמירה
               </button>
             </div>
 
             <div className="muted" style={{ fontSize: 12 }}>
-              * ׳׳₪׳™ ׳”׳“׳¨׳™׳©׳”: ׳›׳׳ ׳¢׳•׳¨׳›׳™׳ ׳¨׳§ ׳×׳׳•׳ ׳” ׳•׳©׳ ׳׳©׳×׳׳© (Mock)
+              * לפי הדרישה: כאן עורכים רק תמונה ושם משתמש (Mock)
             </div>
           </div>
         </div>
       </div>
 
       <div className="card">
-        <h3 style={{ marginTop: 0 }}>׳”׳₪׳•׳¡׳˜׳™׳ ׳©׳׳™</h3>
-        <p className="muted">׳‘׳©׳׳‘ ׳”׳–׳” ׳¨׳•׳׳™׳ ׳׳× ׳–׳” ׳“׳¨׳ ׳₪׳™׳׳˜׳¨ ג€׳©׳׳™ג€ ׳‘׳₪׳™׳“.</p>
+        <h3 style={{ marginTop: 0 }}>הפוסטים שלי</h3>
+        <p className="muted">בשלב הזה רואים את זה דרך פילטר “שלי” בפיד.</p>
         <Link className="btn" to="/feed">
-          ׳¢׳‘׳•׳¨׳™ ׳׳₪׳™׳“
+          עבורי לפיד
         </Link>
       </div>
     </div>

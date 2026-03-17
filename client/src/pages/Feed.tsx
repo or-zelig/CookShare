@@ -15,6 +15,13 @@ function fmtTime(ms: number) {
   });
 }
 
+function mergeUniquePosts(prev: Post[], next: Post[]): Post[] {
+  const byId = new Map<string, Post>();
+  for (const p of prev) byId.set(p.id, p);
+  for (const p of next) byId.set(p.id, p);
+  return Array.from(byId.values()).sort((a, b) => b.createdAt - a.createdAt);
+}
+
 export default function Feed() {
   const { user } = useAuth();
 
@@ -22,6 +29,7 @@ export default function Feed() {
   const [items, setItems] = useState<Post[]>([]);
   const [cursor, setCursor] = useState<number | null>(0);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [ready, setReady] = useState(false);
 
   // composer / edit
   const [composerOpen, setComposerOpen] = useState(false);
@@ -56,6 +64,7 @@ export default function Feed() {
     const res = db.listPosts({ limit: 5, cursor: 0, ...filterArgs });
     setItems(res.items);
     setCursor(res.nextCursor);
+    setReady(true);
   }
 
   useEffect(() => {
@@ -78,11 +87,11 @@ export default function Feed() {
   }, [cursor, mode, user]);
 
   async function loadMore() {
-    if (cursor == null || loadingMore) return;
+    if (!ready || cursor == null || loadingMore) return;
     setLoadingMore(true);
     try {
       const res = db.listPosts({ limit: 5, cursor, ...filterArgs });
-      setItems((prev) => [...prev, ...res.items]);
+      setItems((prev) => mergeUniquePosts(prev, res.items));
       setCursor(res.nextCursor);
     } finally {
       setLoadingMore(false);
@@ -115,7 +124,7 @@ export default function Feed() {
   }
 
   async function onSave() {
-    if (!text.trim()) return alert("׳˜׳§׳¡׳˜ ׳—׳•׳‘׳”");
+    if (!text.trim()) return alert("טקסט חובה");
     if (!user) return;
 
     setSaving(true);
@@ -142,7 +151,7 @@ export default function Feed() {
   }
 
   function onDelete(p: Post) {
-    if (!confirm("׳׳׳—׳•׳§ ׳׳× ׳”׳₪׳•׳¡׳˜?")) return;
+    if (!confirm("למחוק את הפוסט?")) return;
     db.deletePost(p.id);
     refresh();
   }
@@ -162,7 +171,7 @@ export default function Feed() {
         <div className="row" style={{ justifyContent: "space-between" }}>
           <div>
             <h2 style={{ margin: 0 }}>Feed</h2>
-            <div className="muted">׳’׳׳™׳׳” ׳׳™׳ ׳¡׳•׳₪׳™׳× + ׳׳™׳™׳§׳™׳ + ׳×׳’׳•׳‘׳•׳× (Mock)</div>
+            <div className="muted">גלילה אינסופית + לייקים + תגובות (Mock)</div>
           </div>
 
           <div className="row">
@@ -170,23 +179,23 @@ export default function Feed() {
               className={`btn ${mode === "all" ? "btnPrimary" : ""}`}
               onClick={() => setMode("all")}
             >
-              ׳›׳•׳׳
+              כולם
             </button>
             <button
               className={`btn ${mode === "mine" ? "btnPrimary" : ""}`}
               onClick={() => setMode("mine")}
             >
-              ׳©׳׳™
+              שלי
             </button>
             <button
               className={`btn ${mode === "liked" ? "btnPrimary" : ""}`}
               onClick={() => setMode("liked")}
             >
-              ׳׳™׳™׳§׳™׳
+              לייקים
             </button>
 
             <button className="btn btnPrimary" onClick={openCreate}>
-              + ׳₪׳•׳¡׳˜ ׳—׳“׳©
+              + פוסט חדש
             </button>
           </div>
         </div>
@@ -225,10 +234,10 @@ export default function Feed() {
               {isMine && (
                 <div className="row">
                   <button className="btn" onClick={() => openEdit(p)}>
-                    ׳¢׳¨׳™׳›׳”
+                    עריכה
                   </button>
                   <button className="btn danger" onClick={() => onDelete(p)}>
-                    ׳׳—׳™׳§׳”
+                    מחיקה
                   </button>
                 </div>
               )}
@@ -248,11 +257,11 @@ export default function Feed() {
                 className={`btn ${likedByMe ? "btnPrimary" : ""}`}
                 onClick={() => toggleLike(p)}
               >
-                {likedByMe ? "ג₪ן¸" : "נ₪"} {p.likedBy.length}
+                {likedByMe ? "❤️" : "🤍"} {p.likedBy.length}
               </button>
 
               <Link className="btn" to={`/post/${p.id}/comments`}>
-                נ’¬ {counts.commentsCount}
+                💬 {counts.commentsCount}
               </Link>
             </div>
           </div>
@@ -260,8 +269,8 @@ export default function Feed() {
       })}
 
       <div ref={sentinelRef} style={{ height: 1 }} />
-      {loadingMore && <div className="card">׳˜׳•׳¢׳ ׳¢׳•׳“ג€¦</div>}
-      {cursor == null && <div className="card muted">׳¡׳•׳£ ׳”׳¨׳©׳™׳׳” ג¨</div>}
+      {loadingMore && <div className="card">טוען עוד…</div>}
+      {cursor == null && <div className="card muted">סוף הרשימה ✨</div>}
 
       {composerOpen && (
         <div
@@ -270,7 +279,7 @@ export default function Feed() {
         >
           <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
             <h3 style={{ marginTop: 0 }}>
-              {editing ? "׳¢׳¨׳™׳›׳× ׳₪׳•׳¡׳˜" : "׳₪׳•׳¡׳˜ ׳—׳“׳©"}
+              {editing ? "עריכת פוסט" : "פוסט חדש"}
             </h3>
 
             <textarea
@@ -278,7 +287,7 @@ export default function Feed() {
               style={{ minHeight: 110, resize: "vertical" }}
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder="׳׳” ׳‘׳ ׳׳ ׳׳©׳×׳£?"
+              placeholder="מה בא לך לשתף?"
             />
 
             <div className="row" style={{ justifyContent: "space-between" }}>
@@ -291,14 +300,14 @@ export default function Feed() {
 
               <div className="row">
                 <button className="btn" onClick={() => setComposerOpen(false)}>
-                  ׳‘׳™׳˜׳•׳
+                  ביטול
                 </button>
                 <button
                   className="btn btnPrimary"
                   disabled={saving}
                   onClick={onSave}
                 >
-                  ׳©׳׳™׳¨׳”
+                  שמירה
                 </button>
               </div>
             </div>
