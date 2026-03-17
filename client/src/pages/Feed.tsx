@@ -258,9 +258,9 @@ export default function Feed() {
             <div className="postBody">
               <div className="postText">{p.text}</div>
               {p.imageUrl && (
-                <div className="postImageWrap">
+                <Link to={`/post/${p.id}/comments`} className="postImageWrap">
                   <img className="postImage" src={p.imageUrl} alt="" />
-                </div>
+                </Link>
               )}
             </div>
 

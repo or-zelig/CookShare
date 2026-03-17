@@ -3,9 +3,10 @@ import { Link } from "react-router-dom";
 import { api } from "../api/http";
 import { useAuth } from "../auth/AuthContext";
 import { db } from "../mock/db";
+import type { Post } from "../types/models";
 
 export default function ProfileMe() {
-  const { user, refresh } = useAuth();
+  const { user, refreshUser } = useAuth();
   const me = user;
 
   // ✅ חייב להיות לפני hooks + פתרון null
@@ -22,6 +23,9 @@ export default function ProfileMe() {
   );
   const [avatarUrl, setAvatarUrl] = useState(me.avatarUrl || "");
 
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [postsLoading, setPostsLoading] = useState(true);
+
   useEffect(() => {
     return () => {
       if (avatarPreview && avatarPreview.startsWith("blob:")) {
@@ -29,6 +33,26 @@ export default function ProfileMe() {
       }
     };
   }, [avatarPreview]);
+
+  useEffect(() => {
+    let mounted = true;
+    setPostsLoading(true);
+    (async () => {
+      try {
+        const res = await api.getMyPosts(50, null);
+        if (!mounted) return;
+        setPosts(res.posts);
+      } catch {
+        if (!mounted) return;
+        setPosts([]);
+      } finally {
+        if (mounted) setPostsLoading(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   function onPick(file?: File) {
     if (!file) return;
@@ -41,9 +65,6 @@ export default function ProfileMe() {
     const nextUsername = username.trim() || myUsername;
     setBusy(true);
     try {
-      const url = await readFileAsDataUrl(file);
-      await db.updateMe({ avatarDataUrl: url });
-      await refresh();
       let nextAvatarUrl = avatarUrl;
       let uploadedUrl: string | undefined;
       if (avatarFile) {
@@ -65,10 +86,6 @@ export default function ProfileMe() {
     }
   }
 
-  async function save() {
-    await db.updateMe({ username: username.trim() || myUsername });
-    await refresh();
-  }
   const displayAvatar = avatarPreview || avatarUrl;
 
   return (
@@ -115,7 +132,7 @@ export default function ProfileMe() {
             </div>
 
             <div className="muted" style={{ fontSize: 12 }}>
-              * לפי הדרישה: כאן עורכים רק תמונה ושם משתמש
+              * לפי הדרישה: כאן עורכים רק תמונה ושם משתמש (Mock)
             </div>
           </div>
         </div>
@@ -123,10 +140,25 @@ export default function ProfileMe() {
 
       <div className="card">
         <h3 style={{ marginTop: 0 }}>הפוסטים שלי</h3>
-        <p className="muted">בשלב הזה רואים את זה דרך פילטר “שלי” בפיד.</p>
-        <Link className="btn" to="/feed">
-          עבורי לפיד
-        </Link>
+        {postsLoading ? (
+          <p className="muted">טוען...</p>
+        ) : posts.length === 0 ? (
+          <p className="muted">אין פוסטים</p>
+        ) : (
+          <div className="col" style={{ gap: 10 }}>
+            {posts.map((p) => (
+              <div key={p.id} className="miniPost">
+                <div>{p.text}</div>
+                <div className="row" style={{ justifyContent: "space-between" }}>
+                  <span className="muted">{p.likeCount ?? 0} לייקים</span>
+                  <Link className="btn" to={`/post/${p.id}/comments`}>
+                    תגובות
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

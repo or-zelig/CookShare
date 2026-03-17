@@ -119,6 +119,15 @@ function mapUser(u: ServerUser) {
   };
 }
 
+function mapUserFromServer(u: any) {
+  return {
+    id: u?._id ?? u?.id ?? "",
+    username: u?.username ?? "Unknown",
+    email: u?.email ?? "",
+    avatarUrl: resolveMediaUrl(u?.avatarUrl ?? ""),
+  };
+}
+
 export const api = {
   resolveMediaUrl,
   toRelativeMediaUrl,
@@ -194,6 +203,24 @@ export const api = {
     return data;
   },
 
+  async getUser(userId: string) {
+    const data = await request<{ user: any }>(`/users/${userId}`);
+    return mapUserFromServer(data.user);
+  },
+
+  async getUserPosts(userId: string, limit: number, cursor?: string | null) {
+    const qs = new URLSearchParams();
+    qs.set("limit", String(limit));
+    if (cursor) qs.set("cursor", cursor);
+    const data = await request<{ posts: any[]; nextCursor: string | null }>(
+      `/users/${userId}/posts?${qs.toString()}`
+    );
+    return {
+      posts: data.posts.map(mapPost),
+      nextCursor: data.nextCursor,
+    };
+  },
+
   async getFeed(limit: number, cursor?: string | null) {
     const qs = new URLSearchParams();
     qs.set("limit", String(limit));
@@ -251,24 +278,58 @@ export const api = {
   async unlikePost(postId: string) {
     return request<{ ok: boolean }>(`/posts/${postId}/like`, { method: "DELETE" });
   },
+
+  async getPost(postId: string) {
+    const data = await request<{ post: any }>(`/posts/${postId}`);
+    return mapPost(data.post);
+  },
+
+  async listComments(postId: string, limit: number, cursor?: string | null) {
+    const qs = new URLSearchParams();
+    qs.set("limit", String(limit));
+    if (cursor) qs.set("cursor", cursor);
+    const data = await request<{ comments: any[]; nextCursor: string | null }>(
+      `/posts/${postId}/comments?${qs.toString()}`
+    );
+    return {
+      comments: data.comments.map(mapComment),
+      nextCursor: data.nextCursor,
+    };
+  },
+
+  async addComment(postId: string, text: string) {
+    const data = await request<{ comment: any }>(`/posts/${postId}/comments`, {
+      method: "POST",
+      body: JSON.stringify({ text }),
+    });
+    return mapComment(data.comment);
+  },
+
+  async deleteComment(commentId: string) {
+    return request<{ ok: boolean }>(`/comments/${commentId}`, { method: "DELETE" });
+  },
 };
 
 function mapPost(p: any) {
   const authorObj = typeof p.author === "string" ? { id: p.author, username: "Unknown", avatarUrl: "" } : p.author;
-  const authorId = authorObj?._id ?? authorObj?.id ?? "";
   return {
     id: p._id ?? p.id,
-    author: {
-      id: authorId,
-      username: authorObj?.username ?? "Unknown",
-      email: "",
-      avatarUrl: resolveMediaUrl(authorObj?.avatarUrl ?? ""),
-    },
+    author: mapUserFromServer(authorObj),
     text: p.title ?? "",
     imageUrl: resolveMediaUrl(p.imageUrl ?? ""),
     createdAt: p.createdAt,
     likeCount: p.likeCount ?? 0,
     likedByMe: !!p.likedByMe,
     commentCount: p.commentCount ?? 0,
+  };
+}
+
+function mapComment(c: any) {
+  return {
+    id: c._id ?? c.id,
+    postId: c.postId ?? "",
+    author: c.author ? mapUserFromServer(c.author) : null,
+    text: c.text ?? "",
+    createdAt: c.createdAt,
   };
 }

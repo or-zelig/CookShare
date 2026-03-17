@@ -236,12 +236,17 @@ button{ font: inherit; }
   border-radius: 16px;
   overflow: hidden;
   border: 1px solid var(--border);
+  display: block;
+  text-decoration: none;
 }
 .postImage{
   width: 100%;
   display:block;
-  max-height: 460px;
+  max-height: 260px;
   object-fit: cover;
+}
+.postImageLarge{
+  max-height: 560px;
 }
 
 /* avatars used across app */
