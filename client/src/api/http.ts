@@ -14,6 +14,16 @@ function resolveMediaUrl(url?: string) {
   return url;
 }
 
+function toRelativeMediaUrl(url?: string) {
+  if (!url) return "";
+  if (url.startsWith(API_URL)) {
+    const sliced = url.slice(API_URL.length);
+    if (!sliced) return "";
+    return sliced.startsWith("/") ? sliced : `/${sliced}`;
+  }
+  return url;
+}
+
 function getAccessToken() {
   return sessionStorage.getItem("accessToken") || "";
 }
@@ -111,6 +121,7 @@ function mapUser(u: ServerUser) {
 
 export const api = {
   resolveMediaUrl,
+  toRelativeMediaUrl,
   async uploadImage(file: File) {
     const form = new FormData();
     form.append("file", file);
@@ -182,4 +193,82 @@ export const api = {
     clearAccessToken();
     return data;
   },
+
+  async getFeed(limit: number, cursor?: string | null) {
+    const qs = new URLSearchParams();
+    qs.set("limit", String(limit));
+    if (cursor) qs.set("cursor", cursor);
+    const data = await request<{ posts: any[]; nextCursor: string | null }>(`/posts/feed?${qs.toString()}`);
+    return {
+      posts: data.posts.map(mapPost),
+      nextCursor: data.nextCursor,
+    };
+  },
+
+  async getMyPosts(limit: number, cursor?: string | null) {
+    const qs = new URLSearchParams();
+    qs.set("limit", String(limit));
+    if (cursor) qs.set("cursor", cursor);
+    const data = await request<{ posts: any[]; nextCursor: string | null }>(`/posts/mine?${qs.toString()}`);
+    return {
+      posts: data.posts.map(mapPost),
+      nextCursor: data.nextCursor,
+    };
+  },
+
+  async createPost(data: { text: string; imageUrl?: string }) {
+    const payload: { title: string; description?: string; imageUrl?: string; isPublic?: boolean } = {
+      title: data.text,
+      description: "",
+      isPublic: true,
+    };
+    if (data.imageUrl) payload.imageUrl = data.imageUrl;
+    const res = await request<{ post: any }>("/posts", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    return mapPost(res.post);
+  },
+
+  async updatePost(postId: string, data: { text: string; imageUrl?: string }) {
+    const payload: { title?: string; imageUrl?: string } = { title: data.text };
+    if (data.imageUrl) payload.imageUrl = data.imageUrl;
+    const res = await request<{ post: any }>(`/posts/${postId}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    });
+    return mapPost(res.post);
+  },
+
+  async deletePost(postId: string) {
+    return request<{ ok: boolean }>(`/posts/${postId}`, { method: "DELETE" });
+  },
+
+  async likePost(postId: string) {
+    return request<{ ok: boolean }>(`/posts/${postId}/like`, { method: "POST" });
+  },
+
+  async unlikePost(postId: string) {
+    return request<{ ok: boolean }>(`/posts/${postId}/like`, { method: "DELETE" });
+  },
 };
+
+function mapPost(p: any) {
+  const authorObj = typeof p.author === "string" ? { id: p.author, username: "Unknown", avatarUrl: "" } : p.author;
+  const authorId = authorObj?._id ?? authorObj?.id ?? "";
+  return {
+    id: p._id ?? p.id,
+    author: {
+      id: authorId,
+      username: authorObj?.username ?? "Unknown",
+      email: "",
+      avatarUrl: resolveMediaUrl(authorObj?.avatarUrl ?? ""),
+    },
+    text: p.title ?? "",
+    imageUrl: resolveMediaUrl(p.imageUrl ?? ""),
+    createdAt: p.createdAt,
+    likeCount: p.likeCount ?? 0,
+    likedByMe: !!p.likedByMe,
+    commentCount: p.commentCount ?? 0,
+  };
+}

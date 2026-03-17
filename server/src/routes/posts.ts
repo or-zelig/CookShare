@@ -230,9 +230,16 @@ postsRouter.post(
 
     const ingredients = parseIngredients(req.body.ingredients);
     const steps = parseSteps(req.body.steps);
-    const tags = parseStringArray(req.body.tags);
+  const tags = parseStringArray(req.body.tags);
 
-    const imageUrl = req.file ? `/uploads/${req.file.filename}` : "";
+    const bodyImageUrl = typeof req.body?.imageUrl === "string" ? req.body.imageUrl.trim() : "";
+    let imageUrl = req.file ? `/uploads/${req.file.filename}` : "";
+    if (!imageUrl && bodyImageUrl) {
+      if (!bodyImageUrl.startsWith("/uploads/")) {
+        return res.status(400).json({ message: "imageUrl must be an uploaded file" });
+      }
+      imageUrl = bodyImageUrl;
+    }
 
     const post = await Post.create({
       author: req.userId,
@@ -373,9 +380,17 @@ postsRouter.patch(
     if (req.body.steps !== undefined) post.steps = parseSteps(req.body.steps);
     if (req.body.tags !== undefined) post.tags = parseStringArray(req.body.tags);
 
+    const bodyImageUrl = typeof req.body?.imageUrl === "string" ? req.body.imageUrl.trim() : undefined;
+
     if (req.file) {
       await tryDeleteUploadedFile(post.imageUrl);
       post.imageUrl = `/uploads/${req.file.filename}`;
+    } else if (bodyImageUrl !== undefined) {
+      if (bodyImageUrl && !bodyImageUrl.startsWith("/uploads/")) {
+        return res.status(400).json({ message: "imageUrl must be an uploaded file" });
+      }
+      await tryDeleteUploadedFile(post.imageUrl);
+      post.imageUrl = bodyImageUrl;
     }
 
     await post.save();
