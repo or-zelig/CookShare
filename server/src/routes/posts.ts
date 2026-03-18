@@ -316,7 +316,7 @@ postsRouter.get("/posts/mine", requireAuth, async (req: AuthedRequest, res: Resp
   if (pageNum) {
     query = query.skip((pageNum - 1) * limit);
   }
-  const posts = await query.limit(limit + 1);
+  const posts = await query.limit(limit + 1).populate("author", "username avatarUrl");
 
   const hasMore = posts.length > limit;
   const page = hasMore ? posts.slice(0, limit) : posts;
