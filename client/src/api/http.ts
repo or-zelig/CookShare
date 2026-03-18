@@ -232,6 +232,17 @@ export const api = {
     };
   },
 
+  async getFeedPage(page: number, limit: number) {
+    const qs = new URLSearchParams();
+    qs.set("page", String(page));
+    qs.set("limit", String(limit));
+    const data = await request<{ posts: any[]; nextCursor: string | null }>(`/posts/feed?${qs.toString()}`);
+    return {
+      posts: data.posts.map(mapPost),
+      nextCursor: data.nextCursor,
+    };
+  },
+
   async getMyPosts(limit: number, cursor?: string | null) {
     const qs = new URLSearchParams();
     qs.set("limit", String(limit));

@@ -1,11 +1,18 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { db } from "../mock/db";
+import { api } from "../api/http";
+import type { Post } from "../types/models";
 
 type AiResult = { tokens: string[]; explanation: string };
 
+type PageState = {
+  page: number;
+  hasMore: boolean;
+};
+
 const CACHE_KEY = "cookshare_ai_cache_v1";
 const COOLDOWN_MS = 2500;
+const PAGE_LIMIT = 10;
 
 function loadCache(): Record<string, AiResult> {
   try {
@@ -57,16 +64,22 @@ export default function AiSearch() {
   const [lastRun, setLastRun] = useState<number>(0);
   const [result, setResult] = useState<AiResult | null>(null);
 
-  const [cursor, setCursor] = useState<string | null>(null);
-  const [items, setItems] = useState<Awaited<ReturnType<typeof db.listPosts>>["items"]>([]);
+  const [items, setItems] = useState<Post[]>([]);
+  const [paging, setPaging] = useState<PageState>({ page: 1, hasMore: true });
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     let mounted = true;
     (async () => {
-      const res = await db.listPosts({ limit: 5, cursor: null });
+      const res = await api.getFeedPage(1, PAGE_LIMIT);
       if (!mounted) return;
-      setItems(res.items);
-      setCursor(res.nextCursor);
+      setItems(res.posts);
+      setPaging({
+        page: 2,
+        hasMore: res.posts.length === PAGE_LIMIT,
+      });
     })();
     return () => {
       mounted = false;
@@ -98,17 +111,40 @@ export default function AiSearch() {
     setResult(r);
 
     // ריסט “פיד” בסיסי כדי שירגיש כמו חיפוש מחדש
-    const res = await db.listPosts({ limit: 10, cursor: null });
-    setItems(res.items);
-    setCursor(res.nextCursor);
+    const res = await api.getFeedPage(1, PAGE_LIMIT);
+    setItems(res.posts);
+    setPaging({
+      page: 2,
+      hasMore: res.posts.length === PAGE_LIMIT,
+    });
   }
 
   async function loadMore() {
-    if (cursor == null) return;
-    const res = await db.listPosts({ limit: 10, cursor });
-    setItems((prev) => [...prev, ...res.items]);
-    setCursor(res.nextCursor);
+    if (loadingMore || !paging.hasMore) return;
+    setLoadingMore(true);
+    try {
+      const res = await api.getFeedPage(paging.page, PAGE_LIMIT);
+      setItems((prev) => [...prev, ...res.posts]);
+      setPaging({
+        page: paging.page + 1,
+        hasMore: res.posts.length === PAGE_LIMIT,
+      });
+    } finally {
+      setLoadingMore(false);
+    }
   }
+
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+
+    const io = new IntersectionObserver((entries) => {
+      if (entries.some((e) => e.isIntersecting)) void loadMore();
+    });
+
+    io.observe(el);
+    return () => io.disconnect();
+  }, [paging, loadingMore]);
 
   return (
     <div className="col" style={{ gap: 14 }}>
@@ -144,11 +180,6 @@ export default function AiSearch() {
           <Link className="btn" to="/feed">
             ← חזרה לפיד
           </Link>
-          {cursor != null && (
-            <button className="btn" onClick={loadMore}>
-              טען עוד
-            </button>
-          )}
         </div>
       </div>
 
@@ -156,9 +187,9 @@ export default function AiSearch() {
         <div className="postCard" key={p.id}>
           <div className="postBody">
             <div className="postText">{p.text}</div>
-            {(p.imageDataUrl || p.imageUrl) && (
+            {p.imageUrl && (
               <div className="postImageWrap">
-                <img className="postImage" src={p.imageDataUrl ?? p.imageUrl} alt="" />
+                <img className="postImage" src={p.imageUrl} alt="" />
               </div>
             )}
           </div>
@@ -169,6 +200,9 @@ export default function AiSearch() {
           </div>
         </div>
       ))}
+
+      <div ref={sentinelRef} style={{ height: 1 }} />
+      {loadingMore && <div className="card">טוען עוד…</div>}
 
       {filtered.length === 0 && <div className="card muted">אין התאמות</div>}
     </div>
