@@ -25,6 +25,18 @@ export default function ProfileMe() {
 
   const [posts, setPosts] = useState<Post[]>([]);
   const [postsLoading, setPostsLoading] = useState(true);
+  const [editingPost, setEditingPost] = useState<Post | null>(null);
+  const [editText, setEditText] = useState("");
+  const [editImageUrlRel, setEditImageUrlRel] = useState<string | undefined>(
+    undefined
+  );
+  const [editImageFile, setEditImageFile] = useState<File | undefined>(
+    undefined
+  );
+  const [editImagePreview, setEditImagePreview] = useState<
+    string | undefined
+  >(undefined);
+  const [savingPost, setSavingPost] = useState(false);
 
   useEffect(() => {
     return () => {
@@ -33,6 +45,14 @@ export default function ProfileMe() {
       }
     };
   }, [avatarPreview]);
+
+  useEffect(() => {
+    return () => {
+      if (editImagePreview && editImagePreview.startsWith("blob:")) {
+        URL.revokeObjectURL(editImagePreview);
+      }
+    };
+  }, [editImagePreview]);
 
   useEffect(() => {
     let mounted = true;
@@ -87,6 +107,48 @@ export default function ProfileMe() {
   }
 
   const displayAvatar = avatarPreview || avatarUrl;
+
+  function openEditPost(p: Post) {
+    setEditingPost(p);
+    setEditText(p.text);
+    setEditImageUrlRel(api.toRelativeMediaUrl(p.imageUrl));
+    setEditImageFile(undefined);
+    setEditImagePreview(p.imageUrl || undefined);
+  }
+
+  function onPickPostImage(file?: File) {
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    setEditImageFile(file);
+    setEditImagePreview(url);
+  }
+
+  async function savePostEdit() {
+    if (!editingPost) return;
+    if (!editText.trim()) return alert("טקסט חובה");
+
+    setSavingPost(true);
+    try {
+      let nextImageUrlRel = editImageUrlRel;
+      if (editImageFile) {
+        const uploadedUrl = await api.uploadImage(editImageFile);
+        nextImageUrlRel = uploadedUrl;
+      }
+
+      await api.updatePost(editingPost.id, {
+        text: editText.trim(),
+        imageUrl: nextImageUrlRel,
+      });
+
+      const res = await api.getMyPosts(50, null);
+      setPosts(res.posts);
+      setEditingPost(null);
+      setEditImageFile(undefined);
+      setEditImagePreview(undefined);
+    } finally {
+      setSavingPost(false);
+    }
+  }
 
   return (
     <div className="col" style={{ gap: 14 }}>
@@ -151,13 +213,21 @@ export default function ProfileMe() {
                 <div className="miniPostRow">
                   <div className="miniPostBody">
                     <div className="miniPostText">{p.text}</div>
-                    <div className="miniPostMeta">
-                      <span className="muted">{p.likeCount ?? 0} לייקים</span>
+                  <div className="miniPostMeta">
+                    <span className="muted">{p.likeCount ?? 0} לייקים</span>
+                    <div className="row">
+                      <button
+                        className="btn"
+                        onClick={() => openEditPost(p)}
+                      >
+                        ✎
+                      </button>
                       <Link className="btn" to={`/post/${p.id}/comments`}>
                         תגובות
                       </Link>
                     </div>
                   </div>
+                </div>
                   {p.imageUrl && (
                     <Link to={`/post/${p.id}/comments`} className="miniPostImage">
                       <img src={p.imageUrl} alt="" />
@@ -169,6 +239,53 @@ export default function ProfileMe() {
           </div>
         )}
       </div>
+
+      {editingPost && (
+        <div
+          className="modalBackdrop"
+          onMouseDown={() => setEditingPost(null)}
+        >
+          <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
+            <h3 style={{ marginTop: 0 }}>עריכת פוסט</h3>
+
+            <textarea
+              className="input"
+              style={{ minHeight: 110, resize: "vertical" }}
+              value={editText}
+              onChange={(e) => setEditText(e.target.value)}
+              placeholder="מה בא לך לשתף?"
+            />
+
+            <div className="row" style={{ justifyContent: "space-between" }}>
+              <input
+                type="file"
+                accept="image/*"
+                disabled={savingPost}
+                onChange={(e) => void onPickPostImage(e.target.files?.[0])}
+              />
+
+              <div className="row">
+                <button className="btn" onClick={() => setEditingPost(null)}>
+                  ביטול
+                </button>
+                <button
+                  className="btn btnPrimary"
+                  disabled={savingPost}
+                  onClick={savePostEdit}
+                >
+                  שמירה
+                </button>
+              </div>
+            </div>
+
+            {editImagePreview && (
+              <div className="postImageWrap" style={{ marginTop: 10 }}>
+                <img className="postImage" src={editImagePreview} alt="" />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
