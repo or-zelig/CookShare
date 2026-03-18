@@ -243,16 +243,7 @@ export default function Feed() {
                 </div>
               </div>
 
-              {isMine && (
-                <div className="row">
-                  <button className="btn" onClick={() => openEdit(p)}>
-                    עריכה
-                  </button>
-                  <button className="btn danger" onClick={() => onDelete(p)}>
-                    מחיקה
-                  </button>
-                </div>
-              )}
+              {isMine && null}
             </div>
 
             <div className="postBody">
