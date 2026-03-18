@@ -297,6 +297,29 @@ button{ font: inherit; }
   padding: 12px;
   background: rgba(0,0,0,0.16);
 }
+.miniPostRow{
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  justify-content: space-between;
+}
+.miniPostBody{
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+.miniPostText{
+  white-space: pre-wrap;
+  line-height: 1.45;
+}
+.miniPostMeta{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
 .miniPostImage{
   width: 92px;
   height: 68px;

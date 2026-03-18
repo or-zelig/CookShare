@@ -148,10 +148,10 @@ export default function ProfileMe() {
           <div className="col" style={{ gap: 10 }}>
             {posts.map((p) => (
               <div key={p.id} className="miniPost">
-                <div className="row" style={{ gap: 12, alignItems: "flex-start" }}>
-                  <div className="col" style={{ gap: 8, flex: 1 }}>
-                    <div>{p.text}</div>
-                    <div className="row" style={{ justifyContent: "space-between" }}>
+                <div className="miniPostRow">
+                  <div className="miniPostBody">
+                    <div className="miniPostText">{p.text}</div>
+                    <div className="miniPostMeta">
                       <span className="muted">{p.likeCount ?? 0} לייקים</span>
                       <Link className="btn" to={`/post/${p.id}/comments`}>
                         תגובות
