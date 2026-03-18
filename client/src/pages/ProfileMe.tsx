@@ -150,6 +150,13 @@ export default function ProfileMe() {
     }
   }
 
+  async function deletePost(p: Post) {
+    if (!confirm("למחוק את הפוסט?")) return;
+    await api.deletePost(p.id);
+    const res = await api.getMyPosts(50, null);
+    setPosts(res.posts);
+  }
+
   return (
     <div className="col" style={{ gap: 14 }}>
       <div className="card">
@@ -217,8 +224,18 @@ export default function ProfileMe() {
                     <span className="muted">{p.likeCount ?? 0} לייקים</span>
                     <div className="row">
                       <button
+                        className="btn danger"
+                        onClick={() => void deletePost(p)}
+                        aria-label="מחיקת פוסט"
+                        title="מחיקת פוסט"
+                      >
+                        🗑️
+                      </button>
+                      <button
                         className="btn"
                         onClick={() => openEditPost(p)}
+                        aria-label="עריכת פוסט"
+                        title="עריכת פוסט"
                       >
                         ✎
                       </button>
