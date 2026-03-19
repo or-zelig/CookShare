@@ -1,7 +1,8 @@
-import { Router, Request, Response } from "express";
+import { Router, Request, Response, NextFunction } from "express";
 import mongoose from "mongoose";
 import fs from "fs/promises";
 import path from "path";
+import multer from "multer";
 
 import { User } from "../models/User";
 import { Post } from "../models/Post";
@@ -12,13 +13,33 @@ import { attachPostMeta } from "./postMeta";
 
 export const usersRouter = Router();
 
+const uploadSingle = upload.single("avatar");
+
+function handleOptionalUpload(req: Request, res: Response, next: NextFunction) {
+  if (!req.is("multipart/form-data")) return next();
+
+  uploadSingle(req, res, (err) => {
+    if (!err) return next();
+
+    if (err instanceof multer.MulterError) {
+      if (err.code === "LIMIT_FILE_SIZE") {
+        return res.status(413).json({ message: "File too large" });
+      }
+      return res.status(400).json({ message: err.message });
+    }
+
+    const message = err instanceof Error ? err.message : "Invalid file";
+    return res.status(400).json({ message });
+  });
+}
+
 async function tryDeleteUploadedFile(url?: string) {
   if (!url) return;
   if (!url.startsWith("/uploads/")) return;
   const filename = url.replace("/uploads/", "");
   if (!filename) return;
 
-  const uploadsDir = path.resolve(process.cwd(), "uploads");
+  const uploadsDir = path.resolve(process.cwd(), "public", "uploads");
   const full = path.join(uploadsDir, filename);
   try {
     await fs.unlink(full);
@@ -40,12 +61,13 @@ usersRouter.get("/users/:id", async (req: Request, res: Response) => {
 usersRouter.patch(
   "/users/me",
   requireAuth,
-  upload.single("avatar"),
+  handleOptionalUpload,
   async (req: AuthedRequest, res: Response) => {
     const user = await User.findById(req.userId);
     if (!user) return res.status(404).json({ message: "User not found" });
 
     const username = typeof req.body?.username === "string" ? req.body.username.trim() : undefined;
+    const avatarUrl = typeof req.body?.avatarUrl === "string" ? req.body.avatarUrl.trim() : undefined;
 
     if (username) {
       // ensure unique
@@ -57,6 +79,12 @@ usersRouter.patch(
     if (req.file) {
       await tryDeleteUploadedFile(user.avatarUrl);
       user.avatarUrl = `/uploads/${req.file.filename}`;
+    } else if (avatarUrl !== undefined) {
+      if (!avatarUrl.startsWith("/uploads/")) {
+        return res.status(400).json({ message: "avatarUrl must be an uploaded file" });
+      }
+      await tryDeleteUploadedFile(user.avatarUrl);
+      user.avatarUrl = avatarUrl;
     }
 
     await user.save();

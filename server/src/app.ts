@@ -9,6 +9,7 @@ import { setupSwagger } from "./swagger/setupSwagger";
 import postsRouter from "./routes/posts";
 import { usersRouter } from "./routes/users";
 import path from "path";
+import { uploadsRouter } from "./routes/uploads";
 
 export function createApp() {
   const app = express();
@@ -26,10 +27,14 @@ export function createApp() {
   app.use(authRouter);
   setupSwagger(app);
 
-  app.use("/uploads", express.static(path.resolve(process.cwd(), "uploads")));
+  app.use(
+    "/uploads",
+    express.static(path.resolve(process.cwd(), "public", "uploads"))
+  );
 
-   app.use(postsRouter);
-   app.use(usersRouter);
+  app.use(uploadsRouter);
+  app.use(postsRouter);
+  app.use(usersRouter);
 
   app.use(notFound);
   app.use(errorHandler);

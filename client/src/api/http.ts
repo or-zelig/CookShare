@@ -8,6 +8,22 @@ type ServerUser = {
   avatarUrl?: string;
 };
 
+function resolveMediaUrl(url?: string) {
+  if (!url) return "";
+  if (url.startsWith("/")) return `${API_URL}${url}`;
+  return url;
+}
+
+function toRelativeMediaUrl(url?: string) {
+  if (!url) return "";
+  if (url.startsWith(API_URL)) {
+    const sliced = url.slice(API_URL.length);
+    if (!sliced) return "";
+    return sliced.startsWith("/") ? sliced : `/${sliced}`;
+  }
+  return url;
+}
+
 function getAccessToken() {
   return sessionStorage.getItem("accessToken") || "";
 }
@@ -99,11 +115,40 @@ function mapUser(u: ServerUser) {
     id: u.id ?? u._id ?? "",
     username: u.username,
     email: u.email ?? "",
-    avatarUrl: u.avatarUrl ?? "",
+    avatarUrl: resolveMediaUrl(u.avatarUrl),
+  };
+}
+
+function mapUserFromServer(u: any) {
+  return {
+    id: u?._id ?? u?.id ?? "",
+    username: u?.username ?? "Unknown",
+    email: u?.email ?? "",
+    avatarUrl: resolveMediaUrl(u?.avatarUrl ?? ""),
   };
 }
 
 export const api = {
+  resolveMediaUrl,
+  toRelativeMediaUrl,
+  async uploadImage(file: File) {
+    const form = new FormData();
+    form.append("file", file);
+    const data = await request<{ url: string }>("/uploads", {
+      method: "POST",
+      body: form,
+    });
+    return data.url;
+  },
+  async updateMe(data: { username?: string; avatarUrl?: string }) {
+    const payload: { username?: string; avatarUrl?: string } = {};
+    if (data.username) payload.username = data.username;
+    if (data.avatarUrl) payload.avatarUrl = data.avatarUrl;
+    return request<{ user: ServerUser }>("/users/me", {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    });
+  },
   async register(username: string, email: string, password: string) {
     const data = await request<{
       user: ServerUser;
@@ -157,4 +202,145 @@ export const api = {
     clearAccessToken();
     return data;
   },
+
+  async getUser(userId: string) {
+    const data = await request<{ user: any }>(`/users/${userId}`);
+    return mapUserFromServer(data.user);
+  },
+
+  async getUserPosts(userId: string, limit: number, cursor?: string | null) {
+    const qs = new URLSearchParams();
+    qs.set("limit", String(limit));
+    if (cursor) qs.set("cursor", cursor);
+    const data = await request<{ posts: any[]; nextCursor: string | null }>(
+      `/users/${userId}/posts?${qs.toString()}`
+    );
+    return {
+      posts: data.posts.map(mapPost),
+      nextCursor: data.nextCursor,
+    };
+  },
+
+  async getFeed(limit: number, cursor?: string | null) {
+    const qs = new URLSearchParams();
+    qs.set("limit", String(limit));
+    if (cursor) qs.set("cursor", cursor);
+    const data = await request<{ posts: any[]; nextCursor: string | null }>(`/posts/feed?${qs.toString()}`);
+    return {
+      posts: data.posts.map(mapPost),
+      nextCursor: data.nextCursor,
+    };
+  },
+
+  async getFeedPage(page: number, limit: number) {
+    const qs = new URLSearchParams();
+    qs.set("page", String(page));
+    qs.set("limit", String(limit));
+    const data = await request<{ posts: any[]; nextCursor: string | null }>(`/posts/feed?${qs.toString()}`);
+    return {
+      posts: data.posts.map(mapPost),
+      nextCursor: data.nextCursor,
+    };
+  },
+
+  async getMyPosts(limit: number, cursor?: string | null) {
+    const qs = new URLSearchParams();
+    qs.set("limit", String(limit));
+    if (cursor) qs.set("cursor", cursor);
+    const data = await request<{ posts: any[]; nextCursor: string | null }>(`/posts/mine?${qs.toString()}`);
+    return {
+      posts: data.posts.map(mapPost),
+      nextCursor: data.nextCursor,
+    };
+  },
+
+  async createPost(data: { text: string; imageUrl?: string }) {
+    const payload: { title: string; description?: string; imageUrl?: string; isPublic?: boolean } = {
+      title: data.text,
+      description: "",
+      isPublic: true,
+    };
+    if (data.imageUrl) payload.imageUrl = data.imageUrl;
+    const res = await request<{ post: any }>("/posts", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    return mapPost(res.post);
+  },
+
+  async updatePost(postId: string, data: { text: string; imageUrl?: string }) {
+    const payload: { title?: string; imageUrl?: string } = { title: data.text };
+    if (data.imageUrl) payload.imageUrl = data.imageUrl;
+    const res = await request<{ post: any }>(`/posts/${postId}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    });
+    return mapPost(res.post);
+  },
+
+  async deletePost(postId: string) {
+    return request<{ ok: boolean }>(`/posts/${postId}`, { method: "DELETE" });
+  },
+
+  async likePost(postId: string) {
+    return request<{ ok: boolean }>(`/posts/${postId}/like`, { method: "POST" });
+  },
+
+  async unlikePost(postId: string) {
+    return request<{ ok: boolean }>(`/posts/${postId}/like`, { method: "DELETE" });
+  },
+
+  async getPost(postId: string) {
+    const data = await request<{ post: any }>(`/posts/${postId}`);
+    return mapPost(data.post);
+  },
+
+  async listComments(postId: string, limit: number, cursor?: string | null) {
+    const qs = new URLSearchParams();
+    qs.set("limit", String(limit));
+    if (cursor) qs.set("cursor", cursor);
+    const data = await request<{ comments: any[]; nextCursor: string | null }>(
+      `/posts/${postId}/comments?${qs.toString()}`
+    );
+    return {
+      comments: data.comments.map(mapComment),
+      nextCursor: data.nextCursor,
+    };
+  },
+
+  async addComment(postId: string, text: string) {
+    const data = await request<{ comment: any }>(`/posts/${postId}/comments`, {
+      method: "POST",
+      body: JSON.stringify({ text }),
+    });
+    return mapComment(data.comment);
+  },
+
+  async deleteComment(commentId: string) {
+    return request<{ ok: boolean }>(`/comments/${commentId}`, { method: "DELETE" });
+  },
 };
+
+function mapPost(p: any) {
+  const authorObj = typeof p.author === "string" ? { id: p.author, username: "Unknown", avatarUrl: "" } : p.author;
+  return {
+    id: p._id ?? p.id,
+    author: mapUserFromServer(authorObj),
+    text: p.title ?? "",
+    imageUrl: resolveMediaUrl(p.imageUrl ?? ""),
+    createdAt: p.createdAt,
+    likeCount: p.likeCount ?? 0,
+    likedByMe: !!p.likedByMe,
+    commentCount: p.commentCount ?? 0,
+  };
+}
+
+function mapComment(c: any) {
+  return {
+    id: c._id ?? c.id,
+    postId: c.postId ?? "",
+    author: c.author ? mapUserFromServer(c.author) : null,
+    text: c.text ?? "",
+    createdAt: c.createdAt,
+  };
+}

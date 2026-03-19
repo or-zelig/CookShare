@@ -1,12 +1,18 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+﻿import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { db, type Post, type User } from "../mock/db";
+import { api } from "../api/http";
 import { useAuth } from "../auth/AuthContext";
+import type { Post } from "../types/models";
 
 type Mode = "all" | "mine" | "liked";
 
-function fmtTime(ms: number) {
-  return new Date(ms).toLocaleString("he-IL", {
+type Page = {
+  posts: Post[];
+  nextCursor: string | null;
+};
+
+function fmtTime(iso: string) {
+  return new Date(iso).toLocaleString("he-IL", {
     hour: "2-digit",
     minute: "2-digit",
     day: "2-digit",
@@ -14,13 +20,13 @@ function fmtTime(ms: number) {
   });
 }
 
-function readFileAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(String(r.result));
-    r.onerror = reject;
-    r.readAsDataURL(file);
-  });
+function mergeUniquePosts(prev: Post[], next: Post[]): Post[] {
+  const byId = new Map<string, Post>();
+  for (const p of prev) byId.set(p.id, p);
+  for (const p of next) byId.set(p.id, p);
+  return Array.from(byId.values()).sort(
+    (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)
+  );
 }
 
 export default function Feed() {
@@ -28,44 +34,56 @@ export default function Feed() {
 
   const [mode, setMode] = useState<Mode>("all");
   const [items, setItems] = useState<Post[]>([]);
-  const [cursor, setCursor] = useState<number | string | null>(0);
+  const [cursor, setCursor] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [ready, setReady] = useState(false);
 
   // composer / edit
   const [composerOpen, setComposerOpen] = useState(false);
   const [editing, setEditing] = useState<Post | null>(null);
   const [text, setText] = useState("");
-  const [imageDataUrl, setImageDataUrl] = useState<string | undefined>(
+  const [imageUrlRel, setImageUrlRel] = useState<string | undefined>(undefined);
+  const [imageFile, setImageFile] = useState<File | undefined>(undefined);
+  const [imagePreview, setImagePreview] = useState<string | undefined>(
     undefined
   );
+  const [saving, setSaving] = useState(false);
 
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const loadingMoreRef = useRef(false);
 
-  const filterArgs = useMemo(() => {
-    if (!user) return { authorId: undefined, likedByUserId: undefined };
-    if (mode === "mine") return { authorId: user.id, likedByUserId: undefined };
-    if (mode === "liked")
-      return { authorId: undefined, likedByUserId: user.id };
-    return { authorId: undefined, likedByUserId: undefined };
-  }, [mode, user]);
+  useEffect(() => {
+    return () => {
+      if (imagePreview && imagePreview.startsWith("blob:")) {
+        URL.revokeObjectURL(imagePreview);
+      }
+    };
+  }, [imagePreview]);
 
-  async function fetchPage(nextCursor: number | string | null) {
-    if (mode === "all") return db.getFeed({ limit: 5, cursor: nextCursor });
-    if (mode === "mine") return db.getMyPosts({ limit: 5, cursor: nextCursor });
-    return db.listPosts({ limit: 5, cursor: nextCursor, ...filterArgs });
+  async function fetchPage(nextCursor: string | null): Promise<Page> {
+    if (mode === "mine") return api.getMyPosts(5, nextCursor);
+
+    const page = await api.getFeed(5, nextCursor);
+    if (mode === "liked" && user) {
+      return {
+        posts: page.posts.filter((p) => p.likedByMe),
+        nextCursor: page.nextCursor,
+      };
+    }
+    return page;
   }
 
   async function refresh() {
-    const res = await fetchPage(0);
-    setItems("posts" in res ? res.posts : res.items);
+    const res = await fetchPage(null);
+    setItems(res.posts);
     setCursor(res.nextCursor);
+    setReady(true);
   }
 
   useEffect(() => {
     refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode]);
+  }, [mode, user?.id]);
 
   useEffect(() => {
     const el = sentinelRef.current;
@@ -82,23 +100,12 @@ export default function Feed() {
   }, [cursor, mode, user]);
 
   async function loadMore() {
-    if (cursor == null || loadingMoreRef.current) return;
+    if (!ready || cursor == null || loadingMoreRef.current) return;
     loadingMoreRef.current = true;
     setLoadingMore(true);
     try {
       const res = await fetchPage(cursor);
-      const pageItems = "posts" in res ? res.posts : res.items;
-      setItems((prev) => {
-        const seen = new Set(prev.map((p) => p.id));
-        const merged = [...prev];
-        for (const item of pageItems) {
-          if (!seen.has(item.id)) {
-            seen.add(item.id);
-            merged.push(item);
-          }
-        }
-        return merged;
-      });
+      setItems((prev) => mergeUniquePosts(prev, res.posts));
       setCursor(res.nextCursor);
     } finally {
       setLoadingMore(false);
@@ -109,64 +116,54 @@ export default function Feed() {
   function openCreate() {
     setEditing(null);
     setText("");
-    setImageDataUrl(undefined);
+    setImageUrlRel(undefined);
+    setImageFile(undefined);
+    setImagePreview(undefined);
     setComposerOpen(true);
   }
 
-  function openEdit(p: Post) {
-    setEditing(p);
-    setText(p.text);
-    setImageDataUrl(p.imageDataUrl);
-    setComposerOpen(true);
-  }
-
-  async function onPickImage(file?: File) {
+  function onPickImage(file?: File) {
     if (!file) return;
-    const url = await readFileAsDataUrl(file);
-    setImageDataUrl(url);
+    const url = URL.createObjectURL(file);
+    setImageFile(file);
+    setImagePreview(url);
   }
 
   async function onSave() {
     if (!text.trim()) return alert("טקסט חובה");
     if (!user) return;
 
-    if (!editing) {
-      await db.createPost({ title: text.trim(), imageDataUrl });
-    } else {
-      await db.updatePost(editing.id, {
-        title: text.trim(),
-        imageDataUrl: imageDataUrl ?? null,
-      });
+    setSaving(true);
+    try {
+      let nextImageUrlRel = imageUrlRel;
+      if (imageFile) {
+        const uploadedUrl = await api.uploadImage(imageFile);
+        nextImageUrlRel = uploadedUrl;
+      }
+
+      if (!editing) {
+        await api.createPost({ text: text.trim(), imageUrl: nextImageUrlRel });
+      } else {
+        await api.updatePost(editing.id, {
+          text: text.trim(),
+          imageUrl: nextImageUrlRel,
+        });
+      }
+
+      setComposerOpen(false);
+      refresh();
+    } finally {
+      setSaving(false);
     }
-
-    setComposerOpen(false);
-    refresh();
-  }
-
-  async function onDelete(p: Post) {
-    if (!confirm("למחוק את הפוסט?")) return;
-    await db.deletePost(p.id);
-    refresh();
   }
 
   async function toggleLike(p: Post) {
     if (p.likedByMe) {
-      await db.unlikePost(p.id);
+      await api.unlikePost(p.id);
     } else {
-      await db.likePost(p.id);
+      await api.likePost(p.id);
     }
     refresh();
-  }
-
-  function getAuthor(p: Post): User | null {
-    if (!p.author) return null;
-    return {
-      id: p.author.id,
-      username: p.author.username,
-      email: "",
-      avatarDataUrl: p.author.avatarUrl,
-      password: "",
-    };
   }
 
   return (
@@ -175,7 +172,7 @@ export default function Feed() {
         <div className="row" style={{ justifyContent: "space-between" }}>
           <div>
             <h2 style={{ margin: 0 }}>Feed</h2>
-            <div className="muted">גלילה אינסופית + לייקים + תגובות (Mock)</div>
+            <div className="muted">גלילה אינסופית + לייקים + תגובות</div>
           </div>
 
           <div className="row">
@@ -206,28 +203,24 @@ export default function Feed() {
       </div>
 
       {items.map((p) => {
-        const author = getAuthor(p);
-        const likedByMe = p.likedByMe ?? (!!user && p.likedBy.includes(user.id));
-        const likeCount = p.likeCount ?? p.likedBy.length;
-        const isMine = !!user && p.authorId === user.id;
+        const likedByMe = p.likedByMe;
+        const likeCount = p.likeCount ?? 0;
+        const isMine = !!user && p.author?.id === user.id;
 
         return (
           <div className="postCard" key={p.id}>
             <div className="postHeader">
               <div className="row" style={{ gap: 10 }}>
                 <div className="avatar">
-                  {author?.avatarDataUrl || p.author?.avatarUrl ? (
-                    <img src={author?.avatarDataUrl ?? p.author?.avatarUrl} alt="" />
+                  {p.author?.avatarUrl ? (
+                    <img src={p.author.avatarUrl} alt="" />
                   ) : (
-                    <span>{(author?.username ?? p.author?.username)?.[0] ?? "?"}</span>
+                    <span>{p.author?.username?.[0] ?? "?"}</span>
                   )}
                 </div>
                 <div className="col" style={{ gap: 2 }}>
-                  <Link
-                    to={`/profile/${author?.id ?? ""}`}
-                    className="postAuthor"
-                  >
-                    {author?.username ?? p.author?.username ?? "Unknown"}
+                  <Link to={`/profile/${p.author?.id ?? ""}`} className="postAuthor">
+                    {p.author?.username ?? "Unknown"}
                   </Link>
                   <div className="muted" style={{ fontSize: 12 }}>
                     {fmtTime(p.createdAt)}
@@ -235,24 +228,15 @@ export default function Feed() {
                 </div>
               </div>
 
-              {isMine && (
-                <div className="row">
-                  <button className="btn" onClick={() => openEdit(p)}>
-                    עריכה
-                  </button>
-                  <button className="btn danger" onClick={() => onDelete(p)}>
-                    מחיקה
-                  </button>
-                </div>
-              )}
+              {isMine && null}
             </div>
 
             <div className="postBody">
               <div className="postText">{p.text}</div>
-              {(p.imageDataUrl || p.imageUrl) && (
-                <div className="postImageWrap">
-                  <img className="postImage" src={p.imageDataUrl ?? p.imageUrl} alt="" />
-                </div>
+              {p.imageUrl && (
+                <Link to={`/post/${p.id}/comments`} className="postImageWrap">
+                  <img className="postImage" src={p.imageUrl} alt="" />
+                </Link>
               )}
             </div>
 
@@ -298,6 +282,7 @@ export default function Feed() {
               <input
                 type="file"
                 accept="image/*"
+                disabled={saving}
                 onChange={(e) => void onPickImage(e.target.files?.[0])}
               />
 
@@ -305,15 +290,19 @@ export default function Feed() {
                 <button className="btn" onClick={() => setComposerOpen(false)}>
                   ביטול
                 </button>
-                <button className="btn btnPrimary" onClick={onSave}>
+                <button
+                  className="btn btnPrimary"
+                  disabled={saving}
+                  onClick={onSave}
+                >
                   שמירה
                 </button>
               </div>
             </div>
 
-            {imageDataUrl && (
+            {imagePreview && (
               <div className="postImageWrap" style={{ marginTop: 10 }}>
-                <img className="postImage" src={imageDataUrl} alt="" />
+                <img className="postImage" src={imagePreview} alt="" />
               </div>
             )}
           </div>

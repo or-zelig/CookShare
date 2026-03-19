@@ -59,6 +59,11 @@ describe("Users API", () => {
     expect(res.body.user.avatarUrl).toBeDefined();
   });
 
+  it("GET /users/:id returns 400 for invalid id", async () => {
+    const res = await request(app).get("/users/not-an-id");
+    expect(res.status).toBe(400);
+  });
+
   it("PATCH /users/me updates username (multipart)", async () => {
     const res = await request(app).patch("/users/me").set(auth(token1)).field("username", "u1-new");
     expect(res.status).toBe(200);
@@ -67,6 +72,15 @@ describe("Users API", () => {
     // Ensure uniqueness is enforced.
     const conflict = await request(app).patch("/users/me").set(auth(token1)).field("username", "u2");
     expect(conflict.status).toBe(409);
+  });
+
+  it("PATCH /users/me accepts avatarUrl (json)", async () => {
+    const res = await request(app)
+      .patch("/users/me")
+      .set(auth(token1))
+      .send({ avatarUrl: "/uploads/fake.png" });
+    expect(res.status).toBe(200);
+    expect(res.body.user.avatarUrl).toBe("/uploads/fake.png");
   });
 
   it("GET /users/:id/posts includes commentCount/likeCount/likedByMe", async () => {
@@ -86,5 +100,10 @@ describe("Users API", () => {
     expect(post.commentCount).toBe(1);
     expect(post.likeCount).toBe(1);
     expect(post.likedByMe).toBe(true);
+  });
+
+  it("GET /users/:id/posts returns 400 for invalid id", async () => {
+    const res = await request(app).get("/users/not-an-id/posts");
+    expect(res.status).toBe(400);
   });
 });

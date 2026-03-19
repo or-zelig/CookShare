@@ -19,7 +19,7 @@ type AuthState = {
   ) => Promise<void>;
   loginWithGoogle: (credential: string) => Promise<void>;
   logout: () => Promise<void>;
-  refresh: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 };
 
 const AuthCtx = createContext<AuthState | null>(null);
@@ -68,12 +68,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   }
 
-  async function refresh() {
+  async function refreshUser() {
     await restore();
   }
 
   const value = useMemo(
-    () => ({ user, loading, login, register, loginWithGoogle, logout, refresh }),
+    () => ({ user, loading, login, register, loginWithGoogle, logout, refreshUser }),
     [user, loading]
   );
 

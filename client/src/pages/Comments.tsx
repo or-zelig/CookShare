@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { db } from "../mock/db";
+import { api } from "../api/http";
 import { useAuth } from "../auth/AuthContext";
+import type { Comment, Post } from "../types/models";
 
-function fmtTime(ms: number) {
-  return new Date(ms).toLocaleString("he-IL", {
+function fmtTime(iso: string) {
+  return new Date(iso).toLocaleString("he-IL", {
     hour: "2-digit",
     minute: "2-digit",
     day: "2-digit",
@@ -17,10 +18,9 @@ export default function Comments() {
   const postId = id ?? "";
   const { user } = useAuth();
 
-  const [post, setPost] = useState<Awaited<ReturnType<typeof db.getPost>> | null>(null);
-  const [author, setAuthor] = useState<ReturnType<typeof db.getUser> | null>(null);
+  const [post, setPost] = useState<Post | null>(null);
   const [text, setText] = useState("");
-  const [comments, setComments] = useState<Awaited<ReturnType<typeof db.listComments>>["comments"]>([]);
+  const [comments, setComments] = useState<Comment[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -29,30 +29,16 @@ export default function Comments() {
     setLoading(true);
     (async () => {
       try {
-        const p = await db.getPost(postId);
-        if (mounted) {
-          setPost(p);
-          setAuthor(
-            p?.author
-              ? {
-                  id: p.author.id,
-                  username: p.author.username,
-                  email: "",
-                  avatarDataUrl: p.author.avatarUrl,
-                  password: "",
-                }
-              : null
-          );
-        }
+        const p = await api.getPost(postId);
+        if (mounted) setPost(p);
 
-        const res = await db.listComments(postId, { limit: 20, cursor: null });
+        const res = await api.listComments(postId, 20, null);
         if (!mounted) return;
         setComments(res.comments);
         setCursor(res.nextCursor);
       } catch {
         if (!mounted) return;
         setPost(null);
-        setAuthor(null);
         setComments([]);
         setCursor(null);
       } finally {
@@ -69,7 +55,7 @@ export default function Comments() {
     return (
       <div className="card">
         <h2>Comments</h2>
-        <p className="muted">Loading…</p>
+        <p className="muted">Loading...</p>
       </div>
     );
   }
@@ -88,16 +74,16 @@ export default function Comments() {
 
   async function add() {
     if (!text.trim()) return;
-    await db.addComment(postId, text.trim());
+    await api.addComment(postId, text.trim());
     setText("");
-    const res = await db.listComments(postId, { limit: 20, cursor: null });
+    const res = await api.listComments(postId, 20, null);
     setComments(res.comments);
     setCursor(res.nextCursor);
   }
 
   async function del(commentId: string) {
-    await db.deleteComment(commentId);
-    const res = await db.listComments(postId, { limit: 20, cursor: null });
+    await api.deleteComment(commentId);
+    const res = await api.listComments(postId, 20, null);
     setComments(res.comments);
     setCursor(res.nextCursor);
   }
@@ -109,13 +95,19 @@ export default function Comments() {
         <div className="muted">
           לפוסט של{" "}
           <Link
-            to={`/profile/${author?.id ?? ""}`}
+            to={`/profile/${post.author?.id ?? ""}`}
             style={{ textDecoration: "underline" }}
           >
-            {author?.username ?? "Unknown"}
+            {post.author?.username ?? "Unknown"}
           </Link>
         </div>
         <p style={{ marginBottom: 0 }}>{post.text}</p>
+
+        {post.imageUrl && (
+          <div className="postImageWrap" style={{ marginTop: 12 }}>
+            <img className="postImage postImageLarge" src={post.imageUrl} alt="" />
+          </div>
+        )}
 
         <div
           className="row"
@@ -138,7 +130,7 @@ export default function Comments() {
             className="input"
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="כתבי תגובה…"
+            placeholder="כתבי תגובה..."
           />
           <button className="btn btnPrimary" onClick={add}>
             שליחה
@@ -146,36 +138,27 @@ export default function Comments() {
         </div>
       </div>
 
-      {loading && <div className="card muted">Loading…</div>}
+      {loading && <div className="card muted">Loading...</div>}
 
       {comments.map((c) => {
-        const u = c.author
-          ? {
-              id: c.author.id,
-              username: c.author.username,
-              email: "",
-              avatarDataUrl: c.author.avatarUrl,
-              password: "",
-            }
-          : null;
-        const mine = !!user && c.authorId === user.id;
+        const mine = !!user && c.author?.id === user.id;
         return (
           <div className="card" key={c.id}>
             <div className="row" style={{ justifyContent: "space-between" }}>
               <div className="row" style={{ gap: 10 }}>
                 <div className="avatarSm">
-                  {u?.avatarDataUrl ? (
-                    <img src={u.avatarDataUrl} alt="" />
+                  {c.author?.avatarUrl ? (
+                    <img src={c.author.avatarUrl} alt="" />
                   ) : (
-                    <span>{u?.username?.[0] ?? "?"}</span>
+                    <span>{c.author?.username?.[0] ?? "?"}</span>
                   )}
                 </div>
                 <div className="col" style={{ gap: 2 }}>
                   <Link
-                    to={`/profile/${u?.id ?? ""}`}
+                    to={`/profile/${c.author?.id ?? ""}`}
                     style={{ fontWeight: 600 }}
                   >
-                    {u?.username ?? "Unknown"}
+                    {c.author?.username ?? "Unknown"}
                   </Link>
                   <div className="muted" style={{ fontSize: 12 }}>
                     {fmtTime(c.createdAt)}
@@ -199,7 +182,7 @@ export default function Comments() {
         <button
           className="btn"
           onClick={async () => {
-            const res = await db.listComments(postId, { limit: 20, cursor });
+            const res = await api.listComments(postId, 20, cursor);
             setComments((prev) => [...prev, ...res.comments]);
             setCursor(res.nextCursor);
           }}

@@ -1,12 +1,13 @@
-import { Link, useParams } from "react-router-dom";
+﻿import { Link, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { db } from "../mock/db";
+import { api } from "../api/http";
+import type { Post, User } from "../types/models";
 
 export default function ProfileUser() {
   const { userId } = useParams();
   const id = userId ?? "";
-  const [u, setU] = useState<Awaited<ReturnType<typeof db.getUserById>> | null>(null);
-  const [posts, setPosts] = useState<Awaited<ReturnType<typeof db.listUserPosts>>["items"]>([]);
+  const [u, setU] = useState<User | null>(null);
+  const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -14,11 +15,11 @@ export default function ProfileUser() {
     setLoading(true);
     (async () => {
       try {
-        const user = await db.getUserById(id);
-        const res = await db.listUserPosts({ userId: id, limit: 50, cursor: null });
+        const user = await api.getUser(id);
+        const res = await api.getUserPosts(id, 50, null);
         if (!mounted) return;
         setU(user);
-        setPosts(res.items);
+        setPosts(res.posts);
       } catch {
         if (!mounted) return;
         setU(null);
@@ -49,7 +50,7 @@ export default function ProfileUser() {
     return (
       <div className="card">
         <h2>User Profile</h2>
-        <p className="muted">Loading…</p>
+        <p className="muted">Loading...</p>
       </div>
     );
   }
@@ -59,8 +60,8 @@ export default function ProfileUser() {
       <div className="card">
         <div className="row" style={{ gap: 14 }}>
           <div className="avatarLg">
-            {u?.avatarDataUrl ? (
-              <img src={u.avatarDataUrl} alt="" />
+            {u?.avatarUrl ? (
+              <img src={u.avatarUrl} alt="" />
             ) : (
               <span>{u?.username?.[0] ?? "?"}</span>
             )}
@@ -76,22 +77,28 @@ export default function ProfileUser() {
       </div>
 
       <div className="card">
-        <h3 style={{ marginTop: 0 }}>פוסטים של {u.username}</h3>
+        <h3 style={{ marginTop: 0 }}>הפוסטים של {u.username}</h3>
         {posts.length === 0 ? (
           <p className="muted">אין פוסטים</p>
         ) : (
           <div className="col" style={{ gap: 10 }}>
             {posts.map((p) => (
               <div key={p.id} className="miniPost">
-                <div>{p.text}</div>
-                <div
-                  className="row"
-                  style={{ justifyContent: "space-between" }}
-                >
-                  <span className="muted">{p.likeCount ?? p.likedBy.length} לייקים</span>
-                  <Link className="btn" to={`/post/${p.id}/comments`}>
-                    תגובות
-                  </Link>
+                <div className="miniPostRow">
+                  <div className="miniPostBody">
+                    <div className="miniPostText">{p.text}</div>
+                    <div className="miniPostMeta">
+                      <span className="muted">{p.likeCount ?? 0} לייקים</span>
+                      <Link className="btn" to={`/post/${p.id}/comments`}>
+                        תגובות
+                      </Link>
+                    </div>
+                  </div>
+                  {p.imageUrl && (
+                    <Link to={`/post/${p.id}/comments`} className="miniPostImage">
+                      <img src={p.imageUrl} alt="" />
+                    </Link>
+                  )}
                 </div>
               </div>
             ))}

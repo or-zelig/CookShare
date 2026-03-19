@@ -72,6 +72,11 @@ describe("Auth API", () => {
     expect(res.body.ok).toBe(true);
   });
 
+  it("POST /auth/refresh without cookie returns 401", async () => {
+    const res = await request(app).post("/auth/refresh");
+    expect(res.status).toBe(401);
+  });
+
   it("POST /auth/google without credential returns 400", async () => {
     const res = await request(app)
       .post("/auth/google")

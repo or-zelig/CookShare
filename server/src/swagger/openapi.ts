@@ -6,7 +6,7 @@ export const openApiSpec = {
     description: "CookShare backend API (Auth + Posts + Users).",
   },
   servers: [{ url: "http://localhost:4000" }],
-  tags: [{ name: "Auth" }, { name: "Posts" }, { name: "Users" }],
+  tags: [{ name: "Auth" }, { name: "Posts" }, { name: "Users" }, { name: "Uploads" }],
   components: {
     securitySchemes: {
       bearerAuth: { type: "http", scheme: "bearer", bearerFormat: "JWT" },
@@ -325,6 +325,20 @@ export const openApiSpec = {
           avatar: { type: "string", format: "binary" },
         },
       },
+      UploadFileMultipart: {
+        type: "object",
+        properties: {
+          file: { type: "string", format: "binary" },
+        },
+        required: ["file"],
+      },
+      UploadResponse: {
+        type: "object",
+        properties: {
+          url: { type: "string", example: "/uploads/abc.jpg" },
+        },
+        required: ["url"],
+      },
 
       UserSummaryResponse: {
         type: "object",
@@ -529,6 +543,13 @@ export const openApiSpec = {
             schema: { type: "integer", minimum: 1, maximum: 50, default: 20 },
           },
           {
+            name: "page",
+            in: "query",
+            required: false,
+            schema: { type: "integer", minimum: 1 },
+            description: "Optional page-based pagination (overrides cursor).",
+          },
+          {
             name: "cursor",
             in: "query",
             required: false,
@@ -561,6 +582,13 @@ export const openApiSpec = {
             in: "query",
             required: false,
             schema: { type: "integer", minimum: 1, maximum: 50, default: 20 },
+          },
+          {
+            name: "page",
+            in: "query",
+            required: false,
+            schema: { type: "integer", minimum: 1 },
+            description: "Optional page-based pagination (overrides cursor).",
           },
           {
             name: "cursor",
@@ -975,6 +1003,35 @@ export const openApiSpec = {
           },
           "400": {
             description: "Invalid id",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+          },
+        },
+      },
+    },
+
+    "/uploads": {
+      post: {
+        tags: ["Uploads"],
+        summary: "Upload an image file",
+        requestBody: {
+          required: true,
+          content: {
+            "multipart/form-data": {
+              schema: { $ref: "#/components/schemas/UploadFileMultipart" },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "OK",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/UploadResponse" } } },
+          },
+          "400": {
+            description: "Bad request",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+          },
+          "413": {
+            description: "File too large",
             content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
           },
         },

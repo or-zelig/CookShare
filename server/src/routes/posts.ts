@@ -201,7 +201,7 @@ async function tryDeleteUploadedFile(imageUrl?: string) {
   if (!filename) return;
 
   // adjust this if your uploads folder lives elsewhere
-  const uploadsDir = path.resolve(process.cwd(), "uploads");
+  const uploadsDir = path.resolve(process.cwd(), "public", "uploads");
   const full = path.join(uploadsDir, filename);
 
   try {
@@ -230,9 +230,16 @@ postsRouter.post(
 
     const ingredients = parseIngredients(req.body.ingredients);
     const steps = parseSteps(req.body.steps);
-    const tags = parseStringArray(req.body.tags);
+  const tags = parseStringArray(req.body.tags);
 
-    const imageUrl = req.file ? `/uploads/${req.file.filename}` : "";
+    const bodyImageUrl = typeof req.body?.imageUrl === "string" ? req.body.imageUrl.trim() : "";
+    let imageUrl = req.file ? `/uploads/${req.file.filename}` : "";
+    if (!imageUrl && bodyImageUrl) {
+      if (!bodyImageUrl.startsWith("/uploads/")) {
+        return res.status(400).json({ message: "imageUrl must be an uploaded file" });
+      }
+      imageUrl = bodyImageUrl;
+    }
 
     const post = await Post.create({
       author: req.userId,
@@ -256,6 +263,7 @@ postsRouter.post(
  */
 postsRouter.get("/posts/feed", tryAuth, async (req: AuthedRequest, res: Response) => {
   const limit = toInt(req.query.limit, 20, 1, 50);
+  const pageNum = req.query.page !== undefined ? toInt(req.query.page, 1, 1, 1000000) : null;
   const cursor = single(req.query.cursor);
   const q = single(req.query.q)?.trim();
 
@@ -269,14 +277,15 @@ postsRouter.get("/posts/feed", tryAuth, async (req: AuthedRequest, res: Response
     ];
   }
 
-  if (cursor && mongoose.isValidObjectId(cursor)) {
+  if (!pageNum && cursor && mongoose.isValidObjectId(cursor)) {
     filter._id = { $lt: new mongoose.Types.ObjectId(cursor) };
   }
 
-  const posts = await Post.find(filter)
-    .sort({ _id: -1 })
-    .limit(limit + 1)
-    .populate("author", "username avatarUrl");
+  let query = Post.find(filter).sort({ _id: -1 });
+  if (pageNum) {
+    query = query.skip((pageNum - 1) * limit);
+  }
+  const posts = await query.limit(limit + 1).populate("author", "username avatarUrl");
 
   const hasMore = posts.length > limit;
   const page = hasMore ? posts.slice(0, limit) : posts;
@@ -294,15 +303,20 @@ postsRouter.get("/posts/feed", tryAuth, async (req: AuthedRequest, res: Response
  */
 postsRouter.get("/posts/mine", requireAuth, async (req: AuthedRequest, res: Response) => {
   const limit = toInt(req.query.limit, 20, 1, 50);
+  const pageNum = req.query.page !== undefined ? toInt(req.query.page, 1, 1, 1000000) : null;
   const cursor = single(req.query.cursor);
 
   const filter: any = { author: req.userId };
 
-  if (cursor && mongoose.isValidObjectId(cursor)) {
+  if (!pageNum && cursor && mongoose.isValidObjectId(cursor)) {
     filter._id = { $lt: new mongoose.Types.ObjectId(cursor) };
   }
 
-  const posts = await Post.find(filter).sort({ _id: -1 }).limit(limit + 1);
+  let query = Post.find(filter).sort({ _id: -1 });
+  if (pageNum) {
+    query = query.skip((pageNum - 1) * limit);
+  }
+  const posts = await query.limit(limit + 1).populate("author", "username avatarUrl");
 
   const hasMore = posts.length > limit;
   const page = hasMore ? posts.slice(0, limit) : posts;
@@ -373,9 +387,17 @@ postsRouter.patch(
     if (req.body.steps !== undefined) post.steps = parseSteps(req.body.steps);
     if (req.body.tags !== undefined) post.tags = parseStringArray(req.body.tags);
 
+    const bodyImageUrl = typeof req.body?.imageUrl === "string" ? req.body.imageUrl.trim() : undefined;
+
     if (req.file) {
       await tryDeleteUploadedFile(post.imageUrl);
       post.imageUrl = `/uploads/${req.file.filename}`;
+    } else if (bodyImageUrl !== undefined) {
+      if (bodyImageUrl && !bodyImageUrl.startsWith("/uploads/")) {
+        return res.status(400).json({ message: "imageUrl must be an uploaded file" });
+      }
+      await tryDeleteUploadedFile(post.imageUrl);
+      post.imageUrl = bodyImageUrl;
     }
 
     await post.save();
