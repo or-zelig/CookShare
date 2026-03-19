@@ -122,15 +122,6 @@ export default function Feed() {
     setComposerOpen(true);
   }
 
-  function openEdit(p: Post) {
-    setEditing(p);
-    setText(p.text);
-    setImageUrlRel(api.toRelativeMediaUrl(p.imageUrl));
-    setImageFile(undefined);
-    setImagePreview(p.imageUrl || undefined);
-    setComposerOpen(true);
-  }
-
   function onPickImage(file?: File) {
     if (!file) return;
     const url = URL.createObjectURL(file);
@@ -164,12 +155,6 @@ export default function Feed() {
     } finally {
       setSaving(false);
     }
-  }
-
-  async function onDelete(p: Post) {
-    if (!confirm("למחוק את הפוסט?")) return;
-    await api.deletePost(p.id);
-    refresh();
   }
 
   async function toggleLike(p: Post) {

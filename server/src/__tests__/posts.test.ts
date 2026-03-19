@@ -1,4 +1,5 @@
 import request from "supertest";
+import mongoose from "mongoose";
 import { createApp } from "../app";
 import { connectTestDb, clearTestDb, disconnectTestDb } from "./db";
 
@@ -223,6 +224,15 @@ describe("Posts API", () => {
     expect(getPriv.status).toBe(403);
   });
 
+  it("GET /posts/:id returns 400 for invalid id and 404 for missing post", async () => {
+    const invalid = await request(app).get("/posts/not-an-id");
+    expect(invalid.status).toBe(400);
+
+    const missingId = new mongoose.Types.ObjectId().toString();
+    const missing = await request(app).get(`/posts/${missingId}`);
+    expect(missing.status).toBe(404);
+  });
+
   it("GET /posts/:id includes commentCount/likeCount/likedByMe", async () => {
     const created = await createPostJson(token1, { title: "Single Meta", isPublic: true });
     const id = created.body.post._id ?? created.body.post.id;
@@ -269,6 +279,11 @@ describe("Posts API", () => {
     const ok = await request(app).delete(`/comments/${commentId}`).set(auth(token1));
     expect(ok.status).toBe(200);
     expect(ok.body.ok).toBe(true);
+  });
+
+  it("GET /posts/:id/comments returns 400 for invalid id", async () => {
+    const res = await request(app).get("/posts/not-an-id/comments");
+    expect(res.status).toBe(400);
   });
 
   it("PATCH /posts/:id updates post and normalizes steps order", async () => {

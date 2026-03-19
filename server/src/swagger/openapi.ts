@@ -543,6 +543,13 @@ export const openApiSpec = {
             schema: { type: "integer", minimum: 1, maximum: 50, default: 20 },
           },
           {
+            name: "page",
+            in: "query",
+            required: false,
+            schema: { type: "integer", minimum: 1 },
+            description: "Optional page-based pagination (overrides cursor).",
+          },
+          {
             name: "cursor",
             in: "query",
             required: false,
@@ -575,6 +582,13 @@ export const openApiSpec = {
             in: "query",
             required: false,
             schema: { type: "integer", minimum: 1, maximum: 50, default: 20 },
+          },
+          {
+            name: "page",
+            in: "query",
+            required: false,
+            schema: { type: "integer", minimum: 1 },
+            description: "Optional page-based pagination (overrides cursor).",
           },
           {
             name: "cursor",
