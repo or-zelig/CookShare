@@ -7,6 +7,7 @@ import ProfileUser from "./pages/ProfileUser";
 import Comments from "./pages/Comments";
 import AiSearch from "./pages/AiSearch";
 import OAuthCallback from "./pages/OAuthCallback";
+import SuggestedForYou from "./pages/SuggestedForYou";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 import { useAuth } from "./auth/AuthContext";
@@ -42,6 +43,9 @@ export default function App() {
               </Link>
               <Link className="navLink" to="/ai">
                 חיפוש AI
+              </Link>
+              <Link className="navLink" to="/suggested">
+                Suggested
               </Link>
               <Link className="navLink" to="/profile/me">
                 הפרופיל שלי
@@ -120,6 +124,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <AiSearch />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/suggested"
+            element={
+              <ProtectedRoute>
+                <SuggestedForYou />
               </ProtectedRoute>
             }
           />

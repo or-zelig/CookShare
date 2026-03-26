@@ -319,6 +319,15 @@ export const api = {
   async deleteComment(commentId: string) {
     return request<{ ok: boolean }>(`/comments/${commentId}`, { method: "DELETE" });
   },
+  async getAiSuggestions(titles: string[]) {
+    return request<{ suggestions: string[]; provider: string; note?: string }>(
+      "/ai/suggestions",
+      {
+        method: "POST",
+        body: JSON.stringify({ titles }),
+      }
+    );
+  },
 };
 
 function mapPost(p: any) {
