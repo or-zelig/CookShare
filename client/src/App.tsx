@@ -5,7 +5,6 @@ import Feed from "./pages/Feed";
 import ProfileMe from "./pages/ProfileMe";
 import ProfileUser from "./pages/ProfileUser";
 import Comments from "./pages/Comments";
-import AiSearch from "./pages/AiSearch";
 import OAuthCallback from "./pages/OAuthCallback";
 import SuggestedForYou from "./pages/SuggestedForYou";
 
@@ -40,9 +39,6 @@ export default function App() {
             <nav className="nav">
               <Link className="navLink" to="/feed">
                 פיד
-              </Link>
-              <Link className="navLink" to="/ai">
-                חיפוש AI
               </Link>
               <Link className="navLink" to="/suggested">
                 Suggested
@@ -119,14 +115,7 @@ export default function App() {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/ai"
-            element={
-              <ProtectedRoute>
-                <AiSearch />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/ai" element={<Navigate to="/suggested" replace />} />
           <Route
             path="/suggested"
             element={

@@ -4,8 +4,15 @@ import { api } from "../api/http";
 import type { Post } from "../types/models";
 
 type AiResponse = {
-  suggestions: string[];
+  suggestions: Array<{
+    title: string;
+    recipe: {
+      ingredients: string[];
+      steps: string[];
+    };
+  }>;
   provider: string;
+  language: "he" | "en";
   note?: string;
 };
 
@@ -19,7 +26,11 @@ export default function SuggestedForYou() {
   const [error, setError] = useState("");
 
   const titles = useMemo(
-    () => posts.map((p) => p.text).filter(Boolean).slice(0, POST_LIMIT),
+    () =>
+      Array.from(new Set(posts.map((p) => p.title.trim()).filter(Boolean))).slice(
+        0,
+        POST_LIMIT
+      ),
     [posts]
   );
 
@@ -45,7 +56,8 @@ export default function SuggestedForYou() {
     setLoadingAi(true);
     setError("");
     try {
-      const res = await api.getAiSuggestions(titles);
+      const excludeTitles = ai?.suggestions?.map((item) => item.title) ?? [];
+      const res = await api.getAiSuggestions(titles, excludeTitles);
       setAi(res);
     } catch (err) {
       setError("Could not fetch suggestions.");
@@ -84,12 +96,6 @@ export default function SuggestedForYou() {
         </div>
 
         {error && <div className="card muted">{error}</div>}
-        {ai?.note && <div className="muted" style={{ marginTop: 8 }}>{ai.note}</div>}
-        {ai?.provider && (
-          <div className="muted" style={{ marginTop: 6 }}>
-            Provider: {ai.provider}
-          </div>
-        )}
       </div>
 
       <div className="card">
@@ -98,7 +104,7 @@ export default function SuggestedForYou() {
         {posts.length > 0 && (
           <ul style={{ margin: 0, paddingLeft: 18 }}>
             {posts.map((post) => (
-              <li key={post.id}>{post.text}</li>
+              <li key={post.id}>{post.title}</li>
             ))}
           </ul>
         )}
@@ -108,13 +114,31 @@ export default function SuggestedForYou() {
         <h3 style={{ marginTop: 0 }}>Recommendations</h3>
         {!ai && !loadingAi && <div className="muted">No suggestions yet.</div>}
         {loadingAi && <div className="muted">Generating suggestions...</div>}
-        {ai?.suggestions?.length ? (
-          <ul style={{ margin: 0, paddingLeft: 18 }}>
-            {ai.suggestions.map((item, idx) => (
-              <li key={`${item}-${idx}`}>{item}</li>
-            ))}
-          </ul>
-        ) : null}
+        {ai?.suggestions?.length
+          ? ai.suggestions.map((item, idx) => (
+              <div
+                key={`${item.title}-${idx}`}
+                className="card"
+                style={{ marginTop: 10 }}
+              >
+                <h4 style={{ marginTop: 0, marginBottom: 8 }}>{item.title}</h4>
+                <div style={{ marginBottom: 6, fontWeight: 600 }}>Ingredients</div>
+                <ul style={{ marginTop: 0, paddingLeft: 18 }}>
+                  {item.recipe.ingredients.map((ingredient, ingredientIdx) => (
+                    <li key={`${item.title}-ingredient-${ingredientIdx}`}>
+                      {ingredient}
+                    </li>
+                  ))}
+                </ul>
+                <div style={{ marginBottom: 6, fontWeight: 600 }}>Steps</div>
+                <ol style={{ marginTop: 0, paddingLeft: 18 }}>
+                  {item.recipe.steps.map((step, stepIdx) => (
+                    <li key={`${item.title}-step-${stepIdx}`}>{step}</li>
+                  ))}
+                </ol>
+              </div>
+            ))
+          : null}
       </div>
     </div>
   );

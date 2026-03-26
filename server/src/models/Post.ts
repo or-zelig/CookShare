@@ -68,11 +68,14 @@ const PostSchema = new Schema<PostDoc>(
     isPublic: { type: Boolean, default: true },
     tags: { type: [String], default: [] },
   },
-  { timestamps: true }
+  { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } }
 );
 
 PostSchema.index({ createdAt: -1 });
 PostSchema.index({ title: "text", description: "text" });
+PostSchema.virtual("text").get(function (this: PostDoc) {
+  return this.description;
+});
 
 export const Post =
   (mongoose.models.Post as mongoose.Model<PostDoc>) ||

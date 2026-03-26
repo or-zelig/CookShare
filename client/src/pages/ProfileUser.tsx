@@ -86,6 +86,7 @@ export default function ProfileUser() {
               <div key={p.id} className="miniPost">
                 <div className="miniPostRow">
                   <div className="miniPostBody">
+                    <div className="miniPostTitle">{p.title}</div>
                     <div className="miniPostText">{p.text}</div>
                     <div className="miniPostMeta">
                       <span className="muted">{p.likeCount ?? 0} לייקים</span>

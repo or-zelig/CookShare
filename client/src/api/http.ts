@@ -254,10 +254,10 @@ export const api = {
     };
   },
 
-  async createPost(data: { text: string; imageUrl?: string }) {
+  async createPost(data: { title: string; text: string; imageUrl?: string }) {
     const payload: { title: string; description?: string; imageUrl?: string; isPublic?: boolean } = {
-      title: data.text,
-      description: "",
+      title: data.title,
+      description: data.text,
       isPublic: true,
     };
     if (data.imageUrl) payload.imageUrl = data.imageUrl;
@@ -268,8 +268,11 @@ export const api = {
     return mapPost(res.post);
   },
 
-  async updatePost(postId: string, data: { text: string; imageUrl?: string }) {
-    const payload: { title?: string; imageUrl?: string } = { title: data.text };
+  async updatePost(postId: string, data: { title: string; text: string; imageUrl?: string }) {
+    const payload: { title?: string; description?: string; imageUrl?: string } = {
+      title: data.title,
+      description: data.text,
+    };
     if (data.imageUrl) payload.imageUrl = data.imageUrl;
     const res = await request<{ post: any }>(`/posts/${postId}`, {
       method: "PATCH",
@@ -319,12 +322,20 @@ export const api = {
   async deleteComment(commentId: string) {
     return request<{ ok: boolean }>(`/comments/${commentId}`, { method: "DELETE" });
   },
-  async getAiSuggestions(titles: string[]) {
-    return request<{ suggestions: string[]; provider: string; note?: string }>(
+  async getAiSuggestions(titles: string[], excludeTitles: string[] = []) {
+    return request<{
+      suggestions: Array<{
+        title: string;
+        recipe: { ingredients: string[]; steps: string[] };
+      }>;
+      provider: string;
+      language: "he" | "en";
+      note?: string;
+    }>(
       "/ai/suggestions",
       {
         method: "POST",
-        body: JSON.stringify({ titles }),
+        body: JSON.stringify({ titles, excludeTitles }),
       }
     );
   },
@@ -335,7 +346,8 @@ function mapPost(p: any) {
   return {
     id: p._id ?? p.id,
     author: mapUserFromServer(authorObj),
-    text: p.title ?? "",
+    title: p.title ?? "",
+    text: p.text ?? p.description ?? "",
     imageUrl: resolveMediaUrl(p.imageUrl ?? ""),
     createdAt: p.createdAt,
     likeCount: p.likeCount ?? 0,

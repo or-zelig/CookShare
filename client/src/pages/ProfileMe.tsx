@@ -26,6 +26,7 @@ export default function ProfileMe() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [postsLoading, setPostsLoading] = useState(true);
   const [editingPost, setEditingPost] = useState<Post | null>(null);
+  const [editTitle, setEditTitle] = useState("");
   const [editText, setEditText] = useState("");
   const [editImageUrlRel, setEditImageUrlRel] = useState<string | undefined>(
     undefined
@@ -110,6 +111,7 @@ export default function ProfileMe() {
 
   function openEditPost(p: Post) {
     setEditingPost(p);
+    setEditTitle(p.title);
     setEditText(p.text);
     setEditImageUrlRel(api.toRelativeMediaUrl(p.imageUrl));
     setEditImageFile(undefined);
@@ -125,6 +127,7 @@ export default function ProfileMe() {
 
   async function savePostEdit() {
     if (!editingPost) return;
+    if (!editTitle.trim()) return alert("כותרת חובה");
     if (!editText.trim()) return alert("טקסט חובה");
 
     setSavingPost(true);
@@ -136,6 +139,7 @@ export default function ProfileMe() {
       }
 
       await api.updatePost(editingPost.id, {
+        title: editTitle.trim(),
         text: editText.trim(),
         imageUrl: nextImageUrlRel,
       });
@@ -219,6 +223,7 @@ export default function ProfileMe() {
               <div key={p.id} className="miniPost">
                 <div className="miniPostRow">
                   <div className="miniPostBody">
+                    <div className="miniPostTitle">{p.title}</div>
                     <div className="miniPostText">{p.text}</div>
                   <div className="miniPostMeta">
                     <span className="muted">{p.likeCount ?? 0} לייקים</span>
@@ -264,6 +269,13 @@ export default function ProfileMe() {
         >
           <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
             <h3 style={{ marginTop: 0 }}>עריכת פוסט</h3>
+
+            <input
+              className="input"
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              placeholder="כותרת המתכון"
+            />
 
             <textarea
               className="input"
