@@ -41,6 +41,7 @@ export default function Feed() {
   // composer / edit
   const [composerOpen, setComposerOpen] = useState(false);
   const [editing, setEditing] = useState<Post | null>(null);
+  const [title, setTitle] = useState("");
   const [text, setText] = useState("");
   const [imageUrlRel, setImageUrlRel] = useState<string | undefined>(undefined);
   const [imageFile, setImageFile] = useState<File | undefined>(undefined);
@@ -115,10 +116,21 @@ export default function Feed() {
 
   function openCreate() {
     setEditing(null);
+    setTitle("");
     setText("");
     setImageUrlRel(undefined);
     setImageFile(undefined);
     setImagePreview(undefined);
+    setComposerOpen(true);
+  }
+
+  function openEdit(post: Post) {
+    setEditing(post);
+    setTitle(post.title);
+    setText(post.text);
+    setImageUrlRel(api.toRelativeMediaUrl(post.imageUrl));
+    setImageFile(undefined);
+    setImagePreview(post.imageUrl || undefined);
     setComposerOpen(true);
   }
 
@@ -130,6 +142,7 @@ export default function Feed() {
   }
 
   async function onSave() {
+    if (!title.trim()) return alert("כותרת חובה");
     if (!text.trim()) return alert("טקסט חובה");
     if (!user) return;
 
@@ -142,9 +155,14 @@ export default function Feed() {
       }
 
       if (!editing) {
-        await api.createPost({ text: text.trim(), imageUrl: nextImageUrlRel });
+        await api.createPost({
+          title: title.trim(),
+          text: text.trim(),
+          imageUrl: nextImageUrlRel,
+        });
       } else {
         await api.updatePost(editing.id, {
+          title: title.trim(),
           text: text.trim(),
           imageUrl: nextImageUrlRel,
         });
@@ -228,10 +246,15 @@ export default function Feed() {
                 </div>
               </div>
 
-              {isMine && null}
+              {isMine && (
+                <button className="btn" onClick={() => openEdit(p)}>
+                  עריכה
+                </button>
+              )}
             </div>
 
             <div className="postBody">
+              <div className="postTitle">{p.title}</div>
               <div className="postText">{p.text}</div>
               {p.imageUrl && (
                 <Link to={`/post/${p.id}/comments`} className="postImageWrap">
@@ -270,12 +293,19 @@ export default function Feed() {
               {editing ? "עריכת פוסט" : "פוסט חדש"}
             </h3>
 
+            <input
+              className="input"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="כותרת המתכון"
+            />
+
             <textarea
               className="input"
               style={{ minHeight: 110, resize: "vertical" }}
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder="מה בא לך לשתף?"
+              placeholder="תיאור, טיפים או הוראות"
             />
 
             <div className="row" style={{ justifyContent: "space-between" }}>

@@ -1,12 +1,12 @@
-import { Link, Navigate, Route, Routes } from "react-router-dom";
+import { Link, NavLink, Navigate, Route, Routes } from "react-router-dom";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Feed from "./pages/Feed";
 import ProfileMe from "./pages/ProfileMe";
 import ProfileUser from "./pages/ProfileUser";
 import Comments from "./pages/Comments";
-import AiSearch from "./pages/AiSearch";
 import OAuthCallback from "./pages/OAuthCallback";
+import SuggestedForYou from "./pages/SuggestedForYou";
 
 import ProtectedRoute from "./components/ProtectedRoute";
 import { useAuth } from "./auth/AuthContext";
@@ -27,12 +27,12 @@ export default function App() {
 
         {!user ? (
           <nav className="nav">
-            <Link className="navLink" to="/login">
+            <NavLink className={({ isActive }) => `navLink${isActive ? " navLinkActive" : ""}`} to="/login">
               התחברות
-            </Link>
-            <Link className="navLink navLinkPrimary" to="/register">
+            </NavLink>
+            <NavLink className={({ isActive }) => `navLink${isActive ? " navLinkActive" : ""}`} to="/register">
               הרשמה
-            </Link>
+            </NavLink>
           </nav>
         ) : (
           <>
@@ -40,8 +40,8 @@ export default function App() {
               <Link className="navLink" to="/feed">
                 פיד
               </Link>
-              <Link className="navLink" to="/ai">
-                חיפוש AI
+              <Link className="navLink" to="/suggested">
+                Suggested
               </Link>
               <Link className="navLink" to="/profile/me">
                 הפרופיל שלי
@@ -115,11 +115,12 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+          <Route path="/ai" element={<Navigate to="/suggested" replace />} />
           <Route
-            path="/ai"
+            path="/suggested"
             element={
               <ProtectedRoute>
-                <AiSearch />
+                <SuggestedForYou />
               </ProtectedRoute>
             }
           />

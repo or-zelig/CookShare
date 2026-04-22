@@ -101,6 +101,7 @@ export default function Comments() {
             {post.author?.username ?? "Unknown"}
           </Link>
         </div>
+        <h3 style={{ marginBottom: 8 }}>{post.title}</h3>
         <p style={{ marginBottom: 0 }}>{post.text}</p>
 
         {post.imageUrl && (

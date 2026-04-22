@@ -22,8 +22,8 @@ export type Step = {
 export type Post = {
   id: string;
   authorId: string;
+  title: string;
   text: string;
-  title?: string;
   description?: string;
   ingredients?: Ingredient[];
   steps?: Step[];
@@ -202,8 +202,8 @@ function mapServerPost(p: ServerPost): Post {
   return {
     id: p._id,
     authorId,
-    text: p.title ?? "",
-    title: p.title,
+    title: p.title ?? "",
+    text: p.description ?? "",
     description: p.description ?? "",
     ingredients: p.ingredients ?? [],
     steps: p.steps ?? [],
@@ -414,10 +414,9 @@ export const db = {
     imageDataUrl?: string;
     text?: string;
   }): Promise<Post> {
-    const title = (data.title ?? data.text ?? "").trim();
+    const title = (data.title ?? "").trim();
     if (!title) throw new Error("title is required");
-
-    const description = (data.description ?? "").trim();
+    const description = (data.text ?? data.description ?? "").trim();
     const isPublic = data.isPublic ?? true;
     const tags = parseStringArray(data.tags);
     const ingredients = parseIngredients(data.ingredients);
@@ -466,8 +465,8 @@ export const db = {
       text?: string;
     }
   ) {
-    const title = data.title ?? data.text;
-    const description = data.description;
+    const title = data.title;
+    const description = data.text ?? data.description;
     const isPublic = data.isPublic;
     const tags = data.tags !== undefined ? parseStringArray(data.tags) : undefined;
     const ingredients = data.ingredients !== undefined ? parseIngredients(data.ingredients) : undefined;

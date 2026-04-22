@@ -221,7 +221,8 @@ postsRouter.post(
   upload.single("image"),
   async (req: AuthedRequest, res: Response) => {
     const title = single(req.body.title)?.trim();
-    const description = single(req.body.description)?.trim() ?? "";
+    const text = single(req.body.text)?.trim();
+    const description = single(req.body.description)?.trim() ?? text ?? "";
     const isPublic = toBool(req.body.isPublic, true);
 
     if (!title) {
@@ -377,10 +378,12 @@ postsRouter.patch(
 
     const title = single(req.body.title);
     const description = single(req.body.description);
+    const text = single(req.body.text);
     const isPublic = req.body.isPublic !== undefined ? toBool(req.body.isPublic, post.isPublic) : post.isPublic;
 
     if (title !== undefined) post.title = title.trim();
     if (description !== undefined) post.description = description.trim();
+    else if (text !== undefined) post.description = text.trim();
     post.isPublic = isPublic;
 
     if (req.body.ingredients !== undefined) post.ingredients = parseIngredients(req.body.ingredients);

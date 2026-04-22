@@ -1,18 +1,13 @@
-﻿import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api/http";
 import type { Post } from "../types/models";
 
 type AiResult = { tokens: string[]; explanation: string };
 
-type PageState = {
-  page: number;
-  hasMore: boolean;
-};
-
 const CACHE_KEY = "cookshare_ai_cache_v1";
 const COOLDOWN_MS = 2500;
-const PAGE_LIMIT = 10;
+const PAGE_LIMIT = 25;
 
 function loadCache(): Record<string, AiResult> {
   try {
@@ -29,7 +24,6 @@ function saveCache(cache: Record<string, AiResult>) {
   localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
 }
 
-// “AI” מקומי: מפענח טקסט חופשי למילות מפתח לסינון
 function mockAiParse(q: string): AiResult {
   const s = q.toLowerCase();
 
@@ -44,7 +38,6 @@ function mockAiParse(q: string): AiResult {
   if (s.includes("עוף")) push("עוף");
   if (s.includes("דג") || s.includes("טונה")) push("טונה");
 
-  // אם אין כלום – ניקח מילים “חזקות” (אורך >= 4)
   if (tokens.length === 0) {
     s.split(/\s+/)
       .map((w) => w.replace(/[^\p{L}\p{N}]+/gu, ""))
@@ -63,27 +56,21 @@ export default function AiSearch() {
   const [query, setQuery] = useState("");
   const [lastRun, setLastRun] = useState<number>(0);
   const [result, setResult] = useState<AiResult | null>(null);
-
   const [items, setItems] = useState<Post[]>([]);
-  const [paging, setPaging] = useState<PageState>({ page: 1, hasMore: true });
-  const [loadingMore, setLoadingMore] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  async function loadMyPosts() {
+    setLoading(true);
+    try {
+      const res = await api.getMyPosts(PAGE_LIMIT);
+      setItems(res.posts);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
-    let mounted = true;
-    (async () => {
-      const res = await api.getFeedPage(1, PAGE_LIMIT);
-      if (!mounted) return;
-      setItems(res.posts);
-      setPaging({
-        page: 2,
-        hasMore: res.posts.length === PAGE_LIMIT,
-      });
-    })();
-    return () => {
-      mounted = false;
-    };
+    void loadMyPosts();
   }, []);
 
   const canRun = Date.now() - lastRun > COOLDOWN_MS;
@@ -91,7 +78,9 @@ export default function AiSearch() {
   const filtered = useMemo(() => {
     if (!result?.tokens?.length) return items;
     return items.filter((p) =>
-      result.tokens.every((t) => p.text.toLowerCase().includes(t.toLowerCase()))
+      result.tokens.every((t) =>
+        `${p.title} ${p.text}`.toLowerCase().includes(t.toLowerCase())
+      )
     );
   }, [items, result]);
 
@@ -103,56 +92,20 @@ export default function AiSearch() {
 
     const cache = loadCache();
     const key = query.trim().toLowerCase();
-
-    const r = cache[key] ?? mockAiParse(key);
-    cache[key] = r;
+    const nextResult = cache[key] ?? mockAiParse(key);
+    cache[key] = nextResult;
     saveCache(cache);
+    setResult(nextResult);
 
-    setResult(r);
-
-    // ריסט “פיד” בסיסי כדי שירגיש כמו חיפוש מחדש
-    const res = await api.getFeedPage(1, PAGE_LIMIT);
-    setItems(res.posts);
-    setPaging({
-      page: 2,
-      hasMore: res.posts.length === PAGE_LIMIT,
-    });
+    await loadMyPosts();
   }
-
-  async function loadMore() {
-    if (loadingMore || !paging.hasMore) return;
-    setLoadingMore(true);
-    try {
-      const res = await api.getFeedPage(paging.page, PAGE_LIMIT);
-      setItems((prev) => [...prev, ...res.posts]);
-      setPaging({
-        page: paging.page + 1,
-        hasMore: res.posts.length === PAGE_LIMIT,
-      });
-    } finally {
-      setLoadingMore(false);
-    }
-  }
-
-  useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el) return;
-
-    const io = new IntersectionObserver((entries) => {
-      if (entries.some((e) => e.isIntersecting)) void loadMore();
-    });
-
-    io.observe(el);
-    return () => io.disconnect();
-  }, [paging, loadingMore]);
 
   return (
     <div className="col" style={{ gap: 14 }}>
       <div className="card">
         <h2 style={{ marginTop: 0 }}>AI Search (Mock)</h2>
         <p className="muted">
-          חיפוש בלשון חופשית → פענוח ל"מילות מפתח" → סינון תוצאות. כולל cache +
-          cooldown.
+          חיפוש חופשי בתוך המתכונים שלך בלבד.
         </p>
 
         <div className="row" style={{ alignItems: "stretch" }}>
@@ -186,7 +139,10 @@ export default function AiSearch() {
       {filtered.map((p) => (
         <div className="postCard" key={p.id}>
           <div className="postBody">
-            <div className="postText">{p.text}</div>
+            <div className="postTitle">{p.title}</div>
+            {p.text.trim() && p.text.trim() !== p.title.trim() && (
+              <div className="postText">{p.text}</div>
+            )}
             {p.imageUrl && (
               <div className="postImageWrap">
                 <img className="postImage" src={p.imageUrl} alt="" />
@@ -201,9 +157,7 @@ export default function AiSearch() {
         </div>
       ))}
 
-      <div ref={sentinelRef} style={{ height: 1 }} />
-      {loadingMore && <div className="card">טוען עוד…</div>}
-
+      {loading && <div className="card">טוען…</div>}
       {filtered.length === 0 && <div className="card muted">אין התאמות</div>}
     </div>
   );

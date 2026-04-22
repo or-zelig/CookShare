@@ -6,7 +6,7 @@ export const openApiSpec = {
     description: "CookShare backend API (Auth + Posts + Users).",
   },
   servers: [{ url: "http://localhost:4000" }],
-  tags: [{ name: "Auth" }, { name: "Posts" }, { name: "Users" }, { name: "Uploads" }],
+  tags: [{ name: "Auth" }, { name: "Posts" }, { name: "Users" }, { name: "Uploads" }, { name: "AI" }],
   components: {
     securitySchemes: {
       bearerAuth: { type: "http", scheme: "bearer", bearerFormat: "JWT" },
@@ -344,6 +344,76 @@ export const openApiSpec = {
         type: "object",
         properties: { user: { $ref: "#/components/schemas/UserSummary" } },
         required: ["user"],
+      },
+
+      AiSuggestionsRequest: {
+        type: "object",
+        properties: {
+          selectedPostIds: { type: "array", items: { type: "string" } },
+          titles: { type: "array", items: { type: "string" } },
+          excludeTitles: { type: "array", items: { type: "string" } },
+          locale: { type: "string", example: "en-US" },
+          maxSuggestions: { type: "integer", minimum: 1, maximum: 8, example: 5 },
+        },
+      },
+      AiRetrievalSource: {
+        type: "object",
+        properties: {
+          documentId: { type: "string" },
+          sourceId: { type: "string" },
+          title: { type: "string" },
+          chunkIndex: { type: "integer" },
+          score: { type: "number" },
+        },
+        required: ["documentId", "sourceId"],
+      },
+      AiRecipeSuggestion: {
+        type: "object",
+        properties: {
+          title: { type: "string" },
+          recipe: {
+            type: "object",
+            properties: {
+              ingredients: { type: "array", items: { type: "string" } },
+              steps: { type: "array", items: { type: "string" } },
+            },
+            required: ["ingredients", "steps"],
+          },
+          basedOnSourceIds: { type: "array", items: { type: "string" } },
+        },
+        required: ["title", "recipe"],
+      },
+      AiSuggestionsResponse: {
+        type: "object",
+        properties: {
+          requestId: { type: "string" },
+          provider: { type: "string" },
+          mode: { type: "string", enum: ["rag", "fallback", "mock"] },
+          normalizedInput: {
+            type: "object",
+            properties: {
+              titles: { type: "array", items: { type: "string" } },
+              language: { type: "string" },
+            },
+            required: ["titles", "language"],
+          },
+          retrieval: {
+            type: "object",
+            properties: {
+              used: { type: "boolean" },
+              topK: { type: "integer" },
+              hitCount: { type: "integer" },
+              thresholdApplied: { type: ["number", "null"] },
+              warnings: { type: "array", items: { type: "string" } },
+              sources: { type: "array", items: { $ref: "#/components/schemas/AiRetrievalSource" } },
+            },
+            required: ["used", "topK", "hitCount", "thresholdApplied", "warnings", "sources"],
+          },
+          suggestions: { type: "array", items: { $ref: "#/components/schemas/AiRecipeSuggestion" } },
+          warnings: { type: "array", items: { type: "string" } },
+          confidence: { type: "number" },
+        },
+        required: ["requestId", "provider", "mode", "normalizedInput", "retrieval", "suggestions", "warnings", "confidence"],
       },
     },
   },
@@ -1032,6 +1102,46 @@ export const openApiSpec = {
           },
           "413": {
             description: "File too large",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+          },
+        },
+      },
+    },
+
+    "/ai/suggestions": {
+      post: {
+        tags: ["AI"],
+        summary: "Generate AI recipe suggestions from the authenticated user's recipe context",
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": { schema: { $ref: "#/components/schemas/AiSuggestionsRequest" } },
+          },
+        },
+        responses: {
+          "200": {
+            description: "OK",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/AiSuggestionsResponse" } } },
+          },
+          "400": {
+            description: "Invalid request body",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+          },
+          "401": {
+            description: "Unauthorized",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+          },
+          "422": {
+            description: "Low-confidence or unusable request",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+          },
+          "429": {
+            description: "Rate limit exceeded",
+            content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+          },
+          "503": {
+            description: "AI provider unavailable",
             content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
           },
         },

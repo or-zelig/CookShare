@@ -254,10 +254,10 @@ export const api = {
     };
   },
 
-  async createPost(data: { text: string; imageUrl?: string }) {
+  async createPost(data: { title: string; text: string; imageUrl?: string }) {
     const payload: { title: string; description?: string; imageUrl?: string; isPublic?: boolean } = {
-      title: data.text,
-      description: "",
+      title: data.title,
+      description: data.text,
       isPublic: true,
     };
     if (data.imageUrl) payload.imageUrl = data.imageUrl;
@@ -268,8 +268,11 @@ export const api = {
     return mapPost(res.post);
   },
 
-  async updatePost(postId: string, data: { text: string; imageUrl?: string }) {
-    const payload: { title?: string; imageUrl?: string } = { title: data.text };
+  async updatePost(postId: string, data: { title: string; text: string; imageUrl?: string }) {
+    const payload: { title?: string; description?: string; imageUrl?: string } = {
+      title: data.title,
+      description: data.text,
+    };
     if (data.imageUrl) payload.imageUrl = data.imageUrl;
     const res = await request<{ post: any }>(`/posts/${postId}`, {
       method: "PATCH",
@@ -319,6 +322,48 @@ export const api = {
   async deleteComment(commentId: string) {
     return request<{ ok: boolean }>(`/comments/${commentId}`, { method: "DELETE" });
   },
+  async getAiSuggestions(
+    titles: string[],
+    excludeTitles: string[] = [],
+    selectedPostIds: string[] = []
+  ) {
+    return request<{
+      requestId: string;
+      provider: string;
+      mode: "rag" | "fallback" | "mock";
+      normalizedInput: {
+        titles: string[];
+        language: string;
+      };
+      retrieval: {
+        used: boolean;
+        topK: number;
+        hitCount: number;
+        thresholdApplied: number | null;
+        warnings: string[];
+        sources: Array<{
+          documentId: string;
+          sourceId: string;
+          title?: string;
+          chunkIndex?: number;
+          score?: number;
+        }>;
+      };
+      suggestions: Array<{
+        title: string;
+        recipe: { ingredients: string[]; steps: string[] };
+        basedOnSourceIds?: string[];
+      }>;
+      warnings: string[];
+      confidence: number;
+    }>(
+      "/ai/suggestions",
+      {
+        method: "POST",
+        body: JSON.stringify({ titles, excludeTitles, selectedPostIds }),
+      }
+    );
+  },
 };
 
 function mapPost(p: any) {
@@ -326,7 +371,8 @@ function mapPost(p: any) {
   return {
     id: p._id ?? p.id,
     author: mapUserFromServer(authorObj),
-    text: p.title ?? "",
+    title: p.title ?? "",
+    text: p.text ?? p.description ?? "",
     imageUrl: resolveMediaUrl(p.imageUrl ?? ""),
     createdAt: p.createdAt,
     likeCount: p.likeCount ?? 0,

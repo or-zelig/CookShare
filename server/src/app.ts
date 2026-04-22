@@ -10,6 +10,7 @@ import postsRouter from "./routes/posts";
 import { usersRouter } from "./routes/users";
 import path from "path";
 import { uploadsRouter } from "./routes/uploads";
+import aiRouter from "./routes/ai";
 
 export function createApp() {
   const app = express();
@@ -35,6 +36,7 @@ export function createApp() {
   app.use(uploadsRouter);
   app.use(postsRouter);
   app.use(usersRouter);
+  app.use(aiRouter);
 
   app.use(notFound);
   app.use(errorHandler);

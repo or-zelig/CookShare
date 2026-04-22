@@ -13,6 +13,7 @@ export type User = {
 export type Post = {
   id: string;
   author: User;
+  title: string;
   text: string;
   imageUrl?: string;
   createdAt: string;
@@ -24,7 +25,7 @@ export type Post = {
 export type Comment = {
   id: string;
   postId: string;
-  author: User;
+  author: User | null;
   text: string;
   createdAt: string;
 };
