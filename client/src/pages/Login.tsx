@@ -168,7 +168,9 @@ export default function Login() {
               <div className="muted" style={{ fontSize: 12 }}>
                 או התחברות עם Google
               </div>
-              <div ref={googleDivRef} />
+              <div className="googleButtonMount">
+                <div ref={googleDivRef} />
+              </div>
             </div>
           ) : (
             <div className="muted" style={{ fontSize: 12 }}>

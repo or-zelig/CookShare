@@ -4,22 +4,44 @@ import { api } from "../api/http";
 import type { Post } from "../types/models";
 
 type AiResponse = {
+  requestId: string;
+  mode: "rag" | "fallback" | "mock";
+  normalizedInput: {
+    titles: string[];
+    language: string;
+  };
+  retrieval: {
+    used: boolean;
+    topK: number;
+    hitCount: number;
+    thresholdApplied: number | null;
+    warnings: string[];
+    sources: Array<{
+      documentId: string;
+      sourceId: string;
+      title?: string;
+      chunkIndex?: number;
+      score?: number;
+    }>;
+  };
   suggestions: Array<{
     title: string;
     recipe: {
       ingredients: string[];
       steps: string[];
     };
+    basedOnSourceIds?: string[];
   }>;
   provider: string;
-  language: "he" | "en";
-  note?: string;
+  warnings: string[];
+  confidence: number;
 };
 
 const POST_LIMIT = 5;
 
 export default function SuggestedForYou() {
   const [posts, setPosts] = useState<Post[]>([]);
+  const [selectedPosts, setSelectedPosts] = useState<Post[]>([]);
   const [ai, setAi] = useState<AiResponse | null>(null);
   const [loadingPosts, setLoadingPosts] = useState(false);
   const [loadingAi, setLoadingAi] = useState(false);
@@ -27,19 +49,31 @@ export default function SuggestedForYou() {
 
   const titles = useMemo(
     () =>
-      Array.from(new Set(posts.map((p) => p.title.trim()).filter(Boolean))).slice(
-        0,
-        POST_LIMIT
-      ),
-    [posts]
+      Array.from(
+        new Set(selectedPosts.map((p) => p.title.trim()).filter(Boolean))
+      ).slice(0, POST_LIMIT),
+    [selectedPosts]
   );
 
-  async function loadPosts() {
+  function pickPostsForAi(allPosts: Post[], shuffle: boolean) {
+    if (allPosts.length <= POST_LIMIT) return allPosts;
+    if (!shuffle) return allPosts.slice(0, POST_LIMIT);
+
+    const shuffled = [...allPosts];
+    for (let i = shuffled.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled.slice(0, POST_LIMIT);
+  }
+
+  async function loadPosts(shuffle = false) {
     setLoadingPosts(true);
     setError("");
     try {
-      const res = await api.getMyPosts(POST_LIMIT);
+      const res = await api.getMyPosts(50);
       setPosts(res.posts);
+      setSelectedPosts(pickPostsForAi(res.posts, shuffle));
     } catch (err) {
       setError("Could not load your latest recipes.");
     } finally {
@@ -57,7 +91,11 @@ export default function SuggestedForYou() {
     setError("");
     try {
       const excludeTitles = ai?.suggestions?.map((item) => item.title) ?? [];
-      const res = await api.getAiSuggestions(titles, excludeTitles);
+      const res = await api.getAiSuggestions(
+        titles,
+        excludeTitles,
+        selectedPosts.map((post) => post.id)
+      );
       setAi(res);
     } catch (err) {
       setError("Could not fetch suggestions.");
@@ -87,7 +125,11 @@ export default function SuggestedForYou() {
           >
             {loadingAi ? "Asking AI..." : "Get suggestions"}
           </button>
-          <button className="btn" onClick={loadPosts} disabled={loadingPosts}>
+          <button
+            className="btn"
+            onClick={() => void loadPosts(true)}
+            disabled={loadingPosts}
+          >
             {loadingPosts ? "Refreshing..." : "Refresh recipes"}
           </button>
           <Link className="btn" to="/feed">
@@ -96,17 +138,32 @@ export default function SuggestedForYou() {
         </div>
 
         {error && <div className="card muted">{error}</div>}
+        {ai && ai.mode !== "rag" && (
+          <div className="muted" style={{ marginTop: 8 }}>
+            Suggestions are running in {ai.mode} mode.
+          </div>
+        )}
+        {ai && ai.confidence < 0.5 && (
+          <div className="muted" style={{ marginTop: 6 }}>
+            Limited confidence.
+          </div>
+        )}
       </div>
 
       <div className="card">
         <h3 style={{ marginTop: 0 }}>Latest recipes</h3>
-        {posts.length === 0 && <div className="muted">No recipes yet.</div>}
-        {posts.length > 0 && (
+        {selectedPosts.length === 0 && <div className="muted">No recipes yet.</div>}
+        {selectedPosts.length > 0 && (
           <ul style={{ margin: 0, paddingLeft: 18 }}>
-            {posts.map((post) => (
+            {selectedPosts.map((post) => (
               <li key={post.id}>{post.title}</li>
             ))}
           </ul>
+        )}
+        {posts.length > POST_LIMIT && (
+          <div className="muted" style={{ marginTop: 8 }}>
+            Refresh recipes to shuffle which 5 recipes are sent to AI.
+          </div>
         )}
       </div>
 

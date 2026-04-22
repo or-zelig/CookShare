@@ -322,20 +322,45 @@ export const api = {
   async deleteComment(commentId: string) {
     return request<{ ok: boolean }>(`/comments/${commentId}`, { method: "DELETE" });
   },
-  async getAiSuggestions(titles: string[], excludeTitles: string[] = []) {
+  async getAiSuggestions(
+    titles: string[],
+    excludeTitles: string[] = [],
+    selectedPostIds: string[] = []
+  ) {
     return request<{
+      requestId: string;
+      provider: string;
+      mode: "rag" | "fallback" | "mock";
+      normalizedInput: {
+        titles: string[];
+        language: string;
+      };
+      retrieval: {
+        used: boolean;
+        topK: number;
+        hitCount: number;
+        thresholdApplied: number | null;
+        warnings: string[];
+        sources: Array<{
+          documentId: string;
+          sourceId: string;
+          title?: string;
+          chunkIndex?: number;
+          score?: number;
+        }>;
+      };
       suggestions: Array<{
         title: string;
         recipe: { ingredients: string[]; steps: string[] };
+        basedOnSourceIds?: string[];
       }>;
-      provider: string;
-      language: "he" | "en";
-      note?: string;
+      warnings: string[];
+      confidence: number;
     }>(
       "/ai/suggestions",
       {
         method: "POST",
-        body: JSON.stringify({ titles, excludeTitles }),
+        body: JSON.stringify({ titles, excludeTitles, selectedPostIds }),
       }
     );
   },

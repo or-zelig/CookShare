@@ -1,4 +1,4 @@
-import { Link, Navigate, Route, Routes } from "react-router-dom";
+import { Link, NavLink, Navigate, Route, Routes } from "react-router-dom";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Feed from "./pages/Feed";
@@ -27,12 +27,12 @@ export default function App() {
 
         {!user ? (
           <nav className="nav">
-            <Link className="navLink" to="/login">
+            <NavLink className={({ isActive }) => `navLink${isActive ? " navLinkActive" : ""}`} to="/login">
               התחברות
-            </Link>
-            <Link className="navLink navLinkPrimary" to="/register">
+            </NavLink>
+            <NavLink className={({ isActive }) => `navLink${isActive ? " navLinkActive" : ""}`} to="/register">
               הרשמה
-            </Link>
+            </NavLink>
           </nav>
         ) : (
           <>
