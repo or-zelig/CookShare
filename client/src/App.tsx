@@ -22,7 +22,6 @@ export default function App() {
             🍳
           </span>
           <span className="brandText">CookShare</span>
-          <span className="badge">beta</span>
         </div>
 
         {!user ? (

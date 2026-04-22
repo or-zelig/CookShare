@@ -37,6 +37,7 @@ export default function Login() {
   const { login, loginWithGoogle } = useAuth();
   const nav = useNavigate();
   const loc = useLocation();
+  const googleButtonRenderedRef = useRef(false);
 
   const redirectTo = useMemo(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -51,13 +52,10 @@ export default function Login() {
   const [busy, setBusy] = useState(false);
 
   const googleDivRef = useRef<HTMLDivElement | null>(null);
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
 
   useEffect(() => {
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID as
-      | string
-      | undefined;
-
-    if (!clientId) return; // אם אין env - פשוט לא נציג את הכפתור
+    if (!googleClientId) return;
 
     let cancelled = false;
 
@@ -67,7 +65,7 @@ export default function Login() {
         if (cancelled) return;
 
         window.google.accounts.id.initialize({
-          client_id: clientId,
+          client_id: googleClientId,
           callback: async (resp: { credential?: string }) => {
             if (!resp?.credential) {
               setErr("Google credential missing");
@@ -87,13 +85,18 @@ export default function Login() {
           },
         });
 
-        if (googleDivRef.current) {
+        if (googleDivRef.current && !googleButtonRenderedRef.current) {
           googleDivRef.current.innerHTML = "";
           window.google.accounts.id.renderButton(googleDivRef.current, {
-            theme: "outline",
+            type: "standard",
+            theme: "filled_black",
             size: "large",
+            text: "continue_with",
+            shape: "pill",
+            logo_alignment: "left",
             width: 260,
           });
+          googleButtonRenderedRef.current = true;
         }
       } catch (e) {
         setErr(e instanceof Error ? e.message : "Failed to init Google");
@@ -102,8 +105,12 @@ export default function Login() {
 
     return () => {
       cancelled = true;
+      googleButtonRenderedRef.current = false;
+      if (googleDivRef.current) {
+        googleDivRef.current.innerHTML = "";
+      }
     };
-  }, [loginWithGoogle, nav, redirectTo]);
+  }, [googleClientId, loginWithGoogle, nav, redirectTo]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -123,7 +130,7 @@ export default function Login() {
     }
   }
 
-  const hasGoogleClientId = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID);
+  const hasGoogleClientId = Boolean(googleClientId);
 
   return (
     <div className="authLayout">
