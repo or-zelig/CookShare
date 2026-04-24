@@ -6,8 +6,10 @@ async function main() {
   await connectDb();
 
   const app = createApp();
-  app.listen(ENV.PORT, () => {
-    console.log(`[server] listening on http://localhost:${ENV.PORT}`);
+  const host = ENV.NODE_ENV === "production" ? "127.0.0.1" : "0.0.0.0";
+
+  app.listen(ENV.PORT, host, () => {
+    console.log(`[server] listening on http://${host}:${ENV.PORT}`);
   });
 }
 

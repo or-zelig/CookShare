@@ -5,7 +5,7 @@ export const openApiSpec = {
     version: "1.0.0",
     description: "CookShare backend API (Auth + Posts + Users).",
   },
-  servers: [{ url: "http://localhost:4000" }],
+  servers: [{ url: "/api" }, { url: "http://localhost:4000" }],
   tags: [{ name: "Auth" }, { name: "Posts" }, { name: "Users" }, { name: "Uploads" }, { name: "AI" }],
   components: {
     securitySchemes: {

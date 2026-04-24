@@ -34,7 +34,12 @@ function setRefreshCookie(res: any, refreshToken: string) {
 }
 
 function clearRefreshCookie(res: any) {
-  res.clearCookie("rt", { path: "/" });
+  res.clearCookie("rt", {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: ENV.NODE_ENV === "production",
+    path: "/",
+  });
 }
 
 authRouter.post("/auth/register", asyncHandler(async (req, res) => {

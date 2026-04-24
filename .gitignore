@@ -11,7 +11,18 @@
 # env files (never commit secrets)
 **/.env
 **/.env.*
+**/.envprod
 !**/.env.example
+!**/.env.production
+!**/.envprod.example
+
+# certificates / private keys
+**/*.pem
+**/*.key
+**/*.crt
+**/*.csr
+**/*.pfx
+**/*.p12
 
 # logs
 **/*.log
