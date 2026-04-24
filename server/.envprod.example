@@ -1,7 +1,10 @@
 NODE_ENV=production
 PORT=4000
 MONGO_URI=mongodb://cookshare_server:CHANGE_ME@127.0.0.1:21771/cookshare
+HTTPS_PORT=4001
 CLIENT_ORIGIN=https://node93.cs.colman.ac.il
+SSL_KEY_PATH=/home/node93/certs/cookshare/client-key.pem
+SSL_CERT_PATH=/home/node93/certs/cookshare/client-cert.pem
 ACCESS_TOKEN_SECRET=CHANGE_ME
 REFRESH_TOKEN_SECRET=CHANGE_ME
 ACCESS_TOKEN_TTL=15m
