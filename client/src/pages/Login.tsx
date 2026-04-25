@@ -12,14 +12,10 @@ function loadGoogleScript(): Promise<void> {
   return new Promise((resolve, reject) => {
     if (window.google?.accounts?.id) return resolve();
 
-    const existing = document.querySelector(
-      'script[src="https://accounts.google.com/gsi/client"]'
-    );
+    const existing = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
     if (existing) {
       existing.addEventListener("load", () => resolve());
-      existing.addEventListener("error", () =>
-        reject(new Error("Failed to load Google script"))
-      );
+      existing.addEventListener("error", () => reject(new Error("Failed to load Google script")));
       return;
     }
 
@@ -40,14 +36,12 @@ export default function Login() {
   const googleButtonRenderedRef = useRef(false);
 
   const redirectTo = useMemo(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const st: any = loc.state;
     return st?.from ?? "/feed";
   }, [loc.state]);
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -99,7 +93,7 @@ export default function Login() {
           googleButtonRenderedRef.current = true;
         }
       } catch (e) {
-        setErr(e instanceof Error ? e.message : "Failed to init Google");
+        setErr(e instanceof Error ? e.message : "Failed to initialize Google login");
       }
     })();
 
@@ -116,15 +110,15 @@ export default function Login() {
     e.preventDefault();
     setErr(null);
 
-    if (!username.trim()) return setErr("שם משתמש חובה");
-    if (!password) return setErr("סיסמה חובה");
+    if (!username.trim()) return setErr("Username is required");
+    if (!password) return setErr("Password is required");
 
     setBusy(true);
     try {
       await login(username.trim(), password);
       nav(redirectTo, { replace: true });
     } catch (ex) {
-      setErr(ex instanceof Error ? ex.message : "שגיאה");
+      setErr(ex instanceof Error ? ex.message : "Something went wrong");
     } finally {
       setBusy(false);
     }
@@ -135,21 +129,21 @@ export default function Login() {
   return (
     <div className="authLayout">
       <div className="card authCard">
-        <h2 style={{ marginTop: 0 }}>התחברות</h2>
+        <h2 style={{ marginTop: 0 }}>Login</h2>
 
         <form className="col" onSubmit={onSubmit}>
           <input
             className="input"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            placeholder="שם משתמש"
+            placeholder="Username"
             autoComplete="username"
           />
           <input
             className="input"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="סיסמה"
+            placeholder="Password"
             type="password"
             autoComplete="current-password"
           />
@@ -157,23 +151,19 @@ export default function Login() {
           {err && <div className="error">{err}</div>}
 
           <button className="btn btnPrimary" disabled={busy}>
-            {busy ? "מתחברת…" : "התחברי"}
+            {busy ? "Signing in..." : "Sign in"}
           </button>
 
-          <div
-            className="row"
-            style={{ justifyContent: "space-between", flexWrap: "wrap" }}
-          >
+          <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap" }}>
             <Link to="/register" className="muted">
-              אין לך משתמש? הרשמה
+              Don&apos;t have an account? Register
             </Link>
           </div>
 
-          {/* Google */}
           {hasGoogleClientId ? (
             <div className="col" style={{ alignItems: "center", marginTop: 6 }}>
               <div className="muted" style={{ fontSize: 12 }}>
-                או התחברות עם Google
+                Or continue with Google
               </div>
               <div className="googleButtonMount">
                 <div ref={googleDivRef} />
@@ -181,8 +171,7 @@ export default function Login() {
             </div>
           ) : (
             <div className="muted" style={{ fontSize: 12 }}>
-              כדי להפעיל Google Login: הוסיפי VITE_GOOGLE_CLIENT_ID ב-.env של
-              הלקוח
+              To enable Google Login, add `VITE_GOOGLE_CLIENT_ID` to the client `.env` file.
             </div>
           )}
         </form>
