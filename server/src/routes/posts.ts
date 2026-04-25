@@ -358,6 +358,9 @@ postsRouter.get("/posts/:id", tryAuth, async (req: AuthedRequest, res: Response)
  * PATCH /posts/:id
  * Update a post (auth + owner)
  * multipart/form-data optional image
+ * - omitted imageUrl + no uploaded file => keep current image
+ * - same imageUrl => keep current image and file
+ * - new uploaded file or different uploaded imageUrl => replace current image
  */
 postsRouter.patch(
   "/posts/:id",
@@ -399,8 +402,10 @@ postsRouter.patch(
       if (bodyImageUrl && !bodyImageUrl.startsWith("/uploads/")) {
         return res.status(400).json({ message: "imageUrl must be an uploaded file" });
       }
-      await tryDeleteUploadedFile(post.imageUrl);
-      post.imageUrl = bodyImageUrl;
+      if (bodyImageUrl !== post.imageUrl) {
+        await tryDeleteUploadedFile(post.imageUrl);
+        post.imageUrl = bodyImageUrl;
+      }
     }
 
     await post.save();

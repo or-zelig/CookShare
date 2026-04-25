@@ -1,9 +1,27 @@
 import request from "supertest";
 import mongoose from "mongoose";
+import fs from "fs/promises";
+import os from "os";
+import path from "path";
 import { createApp } from "../app";
 import { connectTestDb, clearTestDb, disconnectTestDb } from "./db";
 
 type Tokens = { accessToken: string };
+
+const ONE_BY_ONE_PNG_BASE64 =
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/wwAAgEB/7XlX8UAAAAASUVORK5CYII=";
+
+async function writeTempPng(): Promise<string> {
+  const buf = Buffer.from(ONE_BY_ONE_PNG_BASE64, "base64");
+  const tmpPath = path.join(os.tmpdir(), `post-upload-test-${Date.now()}-${Math.random()}.png`);
+  await fs.writeFile(tmpPath, buf);
+  return tmpPath;
+}
+
+function uploadedPathFromUrl(url: string) {
+  const filename = String(url).replace(/^\/uploads\//, "");
+  return path.resolve(process.cwd(), "public", "uploads", filename);
+}
 
 async function register(app: any, user: { username: string; email: string; password: string }): Promise<Tokens> {
   const res = await request(app).post("/auth/register").send(user);
@@ -309,6 +327,77 @@ describe("Posts API", () => {
     expect(upd.body.post.steps[0].text).toBe("First");
     expect(upd.body.post.steps[1].order).toBe(2);
     expect(upd.body.post.steps[1].text).toBe("Second");
+  });
+
+  it("PATCH /posts/:id preserves image when imageUrl is omitted", async () => {
+    const created = await createPostJson(token1, {
+      title: "Keep Image",
+      description: "Before",
+      imageUrl: "/uploads/existing.png",
+      isPublic: true,
+    });
+    const id = created.body.post._id ?? created.body.post.id;
+
+    const upd = await request(app)
+      .patch(`/posts/${id}`)
+      .set(auth(token1))
+      .send({ title: "Updated", description: "After" });
+
+    expect(upd.status).toBe(200);
+    expect(upd.body.post.imageUrl).toBe("/uploads/existing.png");
+  });
+
+  it("PATCH /posts/:id preserves the uploaded file when the same imageUrl is sent back", async () => {
+    const tempFile = await writeTempPng();
+    const created = await request(app)
+      .post("/posts")
+      .set(auth(token1))
+      .field("title", "With Upload")
+      .attach("image", tempFile);
+
+    expect(created.status).toBe(201);
+    const id = created.body.post._id ?? created.body.post.id;
+    const imageUrl = created.body.post.imageUrl;
+    const uploadedPath = uploadedPathFromUrl(imageUrl);
+
+    const upd = await request(app)
+      .patch(`/posts/${id}`)
+      .set(auth(token1))
+      .send({ title: "Still With Upload", imageUrl });
+
+    expect(upd.status).toBe(200);
+    expect(upd.body.post.imageUrl).toBe(imageUrl);
+    await expect(fs.access(uploadedPath)).resolves.toBeUndefined();
+
+    await fs.unlink(tempFile);
+  });
+
+  it("PATCH /posts/:id replaces the uploaded file when a new image is uploaded", async () => {
+    const originalFile = await writeTempPng();
+    const replacementFile = await writeTempPng();
+    const created = await request(app)
+      .post("/posts")
+      .set(auth(token1))
+      .field("title", "Swap Upload")
+      .attach("image", originalFile);
+
+    expect(created.status).toBe(201);
+    const id = created.body.post._id ?? created.body.post.id;
+    const originalImageUrl = created.body.post.imageUrl;
+    const originalUploadedPath = uploadedPathFromUrl(originalImageUrl);
+
+    const upd = await request(app)
+      .patch(`/posts/${id}`)
+      .set(auth(token1))
+      .field("title", "Swapped Upload")
+      .attach("image", replacementFile);
+
+    expect(upd.status).toBe(200);
+    expect(upd.body.post.imageUrl).not.toBe(originalImageUrl);
+    await expect(fs.access(originalUploadedPath)).rejects.toThrow();
+
+    await fs.unlink(originalFile);
+    await fs.unlink(replacementFile);
   });
 
   it("PATCH /posts/:id forbidden for non-owner", async () => {
