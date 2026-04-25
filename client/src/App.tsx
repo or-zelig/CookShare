@@ -8,6 +8,7 @@ import Comments from "./pages/Comments";
 import OAuthCallback from "./pages/OAuthCallback";
 import SuggestedForYou from "./pages/SuggestedForYou";
 
+import Avatar from "./components/Avatar";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { useAuth } from "./auth/AuthContext";
 
@@ -49,7 +50,7 @@ export default function App() {
 
             <div className="nav right">
               <div className="userChip" title={user.username}>
-                <span className="userDot" aria-hidden="true" />
+                <Avatar className="avatarSm userChipAvatar" src={user.avatarUrl} name={user.username} alt={user.username} />
                 <span className="userName">{user.username}</span>
               </div>
 

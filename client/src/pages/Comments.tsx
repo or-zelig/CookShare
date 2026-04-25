@@ -2,6 +2,7 @@
 import { Link, useParams } from "react-router-dom";
 import { api } from "../api/http";
 import { useAuth } from "../auth/AuthContext";
+import Avatar from "../components/Avatar";
 import type { Comment, Post } from "../types/models";
 
 function fmtTime(iso: string) {
@@ -147,13 +148,7 @@ export default function Comments() {
           <div className="card" key={c.id}>
             <div className="row" style={{ justifyContent: "space-between" }}>
               <div className="row" style={{ gap: 10 }}>
-                <div className="avatarSm">
-                  {c.author?.avatarUrl ? (
-                    <img src={c.author.avatarUrl} alt="" />
-                  ) : (
-                    <span>{c.author?.username?.[0] ?? "?"}</span>
-                  )}
-                </div>
+                <Avatar className="avatarSm" src={c.author?.avatarUrl} name={c.author?.username} alt={c.author?.username ?? ""} />
                 <div className="col" style={{ gap: 2 }}>
                   <Link
                     to={`/profile/${c.author?.id ?? ""}`}

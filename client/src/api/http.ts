@@ -273,7 +273,7 @@ export const api = {
       title: data.title,
       description: data.text,
     };
-    if (data.imageUrl) payload.imageUrl = data.imageUrl;
+    if (data.imageUrl !== undefined) payload.imageUrl = data.imageUrl;
     const res = await request<{ post: any }>(`/posts/${postId}`, {
       method: "PATCH",
       body: JSON.stringify(payload),

@@ -1,6 +1,7 @@
-﻿import { Link, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { api } from "../api/http";
+import Avatar from "../components/Avatar";
 import type { Post, User } from "../types/models";
 
 export default function ProfileUser() {
@@ -59,13 +60,7 @@ export default function ProfileUser() {
     <div className="col" style={{ gap: 14 }}>
       <div className="card">
         <div className="row" style={{ gap: 14 }}>
-          <div className="avatarLg">
-            {u?.avatarUrl ? (
-              <img src={u.avatarUrl} alt="" />
-            ) : (
-              <span>{u?.username?.[0] ?? "?"}</span>
-            )}
-          </div>
+          <Avatar className="avatarLg" src={u?.avatarUrl} name={u?.username} alt={u?.username ?? ""} />
           <div className="col" style={{ gap: 4 }}>
             <h2 style={{ margin: 0 }}>{u?.username ?? ""}</h2>
             <div className="muted">{u?.email ?? ""}</div>

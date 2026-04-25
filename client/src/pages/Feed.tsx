@@ -2,6 +2,7 @@
 import { Link } from "react-router-dom";
 import { api } from "../api/http";
 import { useAuth } from "../auth/AuthContext";
+import Avatar from "../components/Avatar";
 import type { Post } from "../types/models";
 
 type Mode = "all" | "mine" | "liked";
@@ -228,15 +229,9 @@ export default function Feed() {
         return (
           <div className="postCard" key={p.id}>
             <div className="postHeader">
-              <div className="row" style={{ gap: 10 }}>
-                <div className="avatar">
-                  {p.author?.avatarUrl ? (
-                    <img src={p.author.avatarUrl} alt="" />
-                  ) : (
-                    <span>{p.author?.username?.[0] ?? "?"}</span>
-                  )}
-                </div>
-                <div className="col" style={{ gap: 2 }}>
+                <div className="row" style={{ gap: 10 }}>
+                  <Avatar className="avatar" src={p.author?.avatarUrl} name={p.author?.username} alt={p.author?.username ?? ""} />
+                  <div className="col" style={{ gap: 2 }}>
                   <Link to={`/profile/${p.author?.id ?? ""}`} className="postAuthor">
                     {p.author?.username ?? "Unknown"}
                   </Link>

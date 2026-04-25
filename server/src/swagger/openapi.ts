@@ -202,16 +202,22 @@ export const openApiSpec = {
         required: ["title"],
       },
 
-      UpdatePostJson: {
-        type: "object",
-        properties: {
-          title: { type: "string", example: "Updated title" },
-          description: { type: "string", example: "Updated description" },
-          isPublic: { type: "boolean", example: false },
-          tags: { type: "array", items: { type: "string" }, example: ["tag1"] },
-          ingredients: {
-            type: "array",
-            items: { $ref: "#/components/schemas/Ingredient" },
+        UpdatePostJson: {
+          type: "object",
+          properties: {
+            title: { type: "string", example: "Updated title" },
+            description: { type: "string", example: "Updated description" },
+            imageUrl: {
+              type: "string",
+              example: "/uploads/abc.jpg",
+              description:
+                "Optional uploaded image URL. Omit to keep the current image. Send the same value to preserve it explicitly. Send a different /uploads/... URL to replace it.",
+            },
+            isPublic: { type: "boolean", example: false },
+            tags: { type: "array", items: { type: "string" }, example: ["tag1"] },
+            ingredients: {
+              type: "array",
+              items: { $ref: "#/components/schemas/Ingredient" },
             example: [{ name: "Salt" }],
           },
           steps: {
@@ -349,33 +355,71 @@ export const openApiSpec = {
       AiSuggestionsRequest: {
         type: "object",
         properties: {
-          selectedPostIds: { type: "array", items: { type: "string" } },
-          titles: { type: "array", items: { type: "string" } },
-          excludeTitles: { type: "array", items: { type: "string" } },
-          locale: { type: "string", example: "en-US" },
+          selectedPostIds: {
+            type: "array",
+            items: { type: "string" },
+            maxItems: 10,
+            example: ["680b9c93cf61d0c6724c1111"],
+            description: "Optional owned post IDs to use as the primary recipe context.",
+          },
+          titles: {
+            type: "array",
+            items: { type: "string", minLength: 1, maxLength: 100 },
+            maxItems: 10,
+            example: ["Banana bread", "Apple pie"],
+            description: "Optional recipe titles. Required when selectedPostIds is omitted or empty.",
+          },
+          excludeTitles: {
+            type: "array",
+            items: { type: "string", minLength: 1, maxLength: 120 },
+            maxItems: 20,
+            example: ["Banana bread"],
+            description: "Titles that must not appear in the returned suggestions.",
+          },
+          locale: {
+            type: "string",
+            minLength: 2,
+            maxLength: 16,
+            example: "en-US",
+            description: "Accepted for compatibility; current AI suggestion generation always returns English content.",
+          },
           maxSuggestions: { type: "integer", minimum: 1, maximum: 8, example: 5 },
         },
+        description:
+          "At least one of selectedPostIds or titles must be provided. If selectedPostIds resolve to owned posts, their titles take precedence over titles.",
       },
       AiRetrievalSource: {
         type: "object",
         properties: {
           documentId: { type: "string" },
           sourceId: { type: "string" },
-          title: { type: "string" },
-          chunkIndex: { type: "integer" },
-          score: { type: "number" },
+          title: { type: "string", example: "Banana bread" },
+          chunkIndex: { type: "integer", minimum: 0, example: 0 },
+          score: { type: "number", example: 0.8123 },
         },
         required: ["documentId", "sourceId"],
       },
       AiRecipeSuggestion: {
         type: "object",
         properties: {
-          title: { type: "string" },
+          title: { type: "string", example: "Banana oat loaf" },
           recipe: {
             type: "object",
             properties: {
-              ingredients: { type: "array", items: { type: "string" } },
-              steps: { type: "array", items: { type: "string" } },
+              ingredients: {
+                type: "array",
+                items: { type: "string" },
+                minItems: 3,
+                maxItems: 12,
+                example: ["banana", "oats", "eggs", "flour"],
+              },
+              steps: {
+                type: "array",
+                items: { type: "string" },
+                minItems: 2,
+                maxItems: 8,
+                example: ["Mix the batter", "Bake in a loaf pan"],
+              },
             },
             required: ["ingredients", "steps"],
           },
@@ -383,17 +427,56 @@ export const openApiSpec = {
         },
         required: ["title", "recipe"],
       },
+      AiError: {
+        type: "object",
+        properties: {
+          requestId: { type: "string", example: "req_01hxyzabc123" },
+          error: {
+            type: "object",
+            properties: {
+              code: {
+                type: "string",
+                enum: [
+                  "invalid_body",
+                  "low_confidence",
+                  "rate_limit_exceeded",
+                  "provider_unavailable",
+                  "internal_error",
+                ],
+              },
+              message: { type: "string" },
+              details: {
+                description: "Optional machine-readable validation or provider context.",
+              },
+            },
+            required: ["code", "message"],
+          },
+        },
+        required: ["requestId", "error"],
+      },
       AiSuggestionsResponse: {
         type: "object",
         properties: {
-          requestId: { type: "string" },
-          provider: { type: "string" },
+          requestId: { type: "string", example: "req_01hxyzabc123" },
+          provider: {
+            type: "string",
+            example: "groq:llama-3.1-8b-instant",
+            description: "Provider label used for the final result. Fallback responses use `fallback`.",
+          },
           mode: { type: "string", enum: ["rag", "fallback", "mock"] },
           normalizedInput: {
             type: "object",
             properties: {
-              titles: { type: "array", items: { type: "string" } },
-              language: { type: "string" },
+              titles: {
+                type: "array",
+                items: { type: "string" },
+                example: ["Banana bread"],
+              },
+              language: {
+                type: "string",
+                example: "en",
+                description: "Normalized query language used for generation after optional title translation.",
+              },
             },
             required: ["titles", "language"],
           },
@@ -404,17 +487,25 @@ export const openApiSpec = {
               topK: { type: "integer" },
               hitCount: { type: "integer" },
               thresholdApplied: { type: ["number", "null"] },
-              warnings: { type: "array", items: { type: "string" } },
-              sources: { type: "array", items: { $ref: "#/components/schemas/AiRetrievalSource" } },
+                warnings: {
+                  type: "array",
+                  items: { type: "string" },
+                  example: ["No retrieval chunks passed the similarity threshold."],
+                },
+                sources: { type: "array", items: { $ref: "#/components/schemas/AiRetrievalSource" } },
+              },
+              required: ["used", "topK", "hitCount", "thresholdApplied", "warnings", "sources"],
             },
-            required: ["used", "topK", "hitCount", "thresholdApplied", "warnings", "sources"],
+            suggestions: { type: "array", items: { $ref: "#/components/schemas/AiRecipeSuggestion" } },
+            warnings: {
+              type: "array",
+              items: { type: "string" },
+              description: "Top-level warnings for translation, validation fallback, or retrieval caveats.",
+            },
+            confidence: { type: "number", minimum: 0, maximum: 1, example: 0.77 },
           },
-          suggestions: { type: "array", items: { $ref: "#/components/schemas/AiRecipeSuggestion" } },
-          warnings: { type: "array", items: { type: "string" } },
-          confidence: { type: "number" },
+          required: ["requestId", "provider", "mode", "normalizedInput", "retrieval", "suggestions", "warnings", "confidence"],
         },
-        required: ["requestId", "provider", "mode", "normalizedInput", "retrieval", "suggestions", "warnings", "confidence"],
-      },
     },
   },
 
@@ -712,13 +803,15 @@ export const openApiSpec = {
         },
       },
 
-      patch: {
-        tags: ["Posts"],
-        summary: "Update post (owner only). Supports multipart or json",
-        security: [{ bearerAuth: [] }],
-        parameters: [
-          {
-            name: "id",
+        patch: {
+          tags: ["Posts"],
+          summary: "Update post (owner only). Supports multipart or json",
+          description:
+            "If imageUrl is omitted and no image file is uploaded, the existing image is preserved. Sending the same imageUrl preserves the current file. Uploading a new image or sending a different /uploads/... imageUrl replaces the old image.",
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            {
+              name: "id",
             in: "path",
             required: true,
             schema: { type: "string" },
@@ -731,14 +824,19 @@ export const openApiSpec = {
               schema: {
                 // same as create but everything optional
                 type: "object",
-                properties: {
-                  title: { type: "string" },
-                  description: { type: "string" },
-                  isPublic: { type: "string", description: "Boolean as string in multipart" },
-                  tags: { type: "string", description: 'JSON stringified array, e.g. ["t1"]' },
-                  ingredients: { type: "string", description: "JSON stringified array (objects or strings)" },
-                  steps: { type: "string", description: "JSON stringified array (objects or strings)" },
-                  image: { type: "string", format: "binary" },
+                  properties: {
+                    title: { type: "string" },
+                    description: { type: "string" },
+                    imageUrl: {
+                      type: "string",
+                      description:
+                        "Optional uploaded image URL. Omit to keep the current image. Send the same value to preserve it explicitly. Send a different /uploads/... URL to replace it.",
+                    },
+                    isPublic: { type: "string", description: "Boolean as string in multipart" },
+                    tags: { type: "string", description: 'JSON stringified array, e.g. ["t1"]' },
+                    ingredients: { type: "string", description: "JSON stringified array (objects or strings)" },
+                    steps: { type: "string", description: "JSON stringified array (objects or strings)" },
+                    image: { type: "string", format: "binary" },
                 },
               },
             },
@@ -1112,6 +1210,8 @@ export const openApiSpec = {
       post: {
         tags: ["AI"],
         summary: "Generate AI recipe suggestions from the authenticated user's recipe context",
+        description:
+          "Returns English recipe suggestions using the authenticated user's own posts as context. The service may return a normal RAG result, a deterministic mock result, or a conservative fallback result when retrieval or model output is weak.",
         security: [{ bearerAuth: [] }],
         requestBody: {
           required: true,
@@ -1119,33 +1219,37 @@ export const openApiSpec = {
             "application/json": { schema: { $ref: "#/components/schemas/AiSuggestionsRequest" } },
           },
         },
-        responses: {
-          "200": {
-            description: "OK",
-            content: { "application/json": { schema: { $ref: "#/components/schemas/AiSuggestionsResponse" } } },
-          },
-          "400": {
-            description: "Invalid request body",
-            content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
-          },
-          "401": {
-            description: "Unauthorized",
-            content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
-          },
-          "422": {
-            description: "Low-confidence or unusable request",
-            content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
-          },
-          "429": {
-            description: "Rate limit exceeded",
-            content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
-          },
-          "503": {
-            description: "AI provider unavailable",
-            content: { "application/json": { schema: { $ref: "#/components/schemas/Error" } } },
+          responses: {
+            "200": {
+              description: "OK",
+              content: { "application/json": { schema: { $ref: "#/components/schemas/AiSuggestionsResponse" } } },
+            },
+            "400": {
+              description: "Invalid request body",
+              content: { "application/json": { schema: { $ref: "#/components/schemas/AiError" } } },
+            },
+            "401": {
+              description: "Unauthorized",
+              content: { "application/json": { schema: { $ref: "#/components/schemas/AiError" } } },
+            },
+            "422": {
+              description: "Low-confidence or unusable request",
+              content: { "application/json": { schema: { $ref: "#/components/schemas/AiError" } } },
+            },
+            "429": {
+              description: "Rate limit exceeded",
+              content: { "application/json": { schema: { $ref: "#/components/schemas/AiError" } } },
+            },
+            "503": {
+              description: "AI provider unavailable",
+              content: { "application/json": { schema: { $ref: "#/components/schemas/AiError" } } },
+            },
+            "500": {
+              description: "Unexpected internal AI error",
+              content: { "application/json": { schema: { $ref: "#/components/schemas/AiError" } } },
+            },
           },
         },
       },
-    },
   },
 } as const;

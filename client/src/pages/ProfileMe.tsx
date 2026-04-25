@@ -2,6 +2,7 @@
 import { Link } from "react-router-dom";
 import { api } from "../api/http";
 import { useAuth } from "../auth/AuthContext";
+import Avatar from "../components/Avatar";
 import { db } from "../mock/db";
 import type { Post } from "../types/models";
 
@@ -167,13 +168,7 @@ export default function ProfileMe() {
         <h2 style={{ marginTop: 0 }}>הפרופיל שלי</h2>
 
         <div className="row" style={{ gap: 14 }}>
-          <div className="avatarLg">
-            {displayAvatar ? (
-              <img src={displayAvatar} alt="" />
-            ) : (
-              <span>{myUsername[0]}</span>
-            )}
-          </div>
+          <Avatar className="avatarLg" src={displayAvatar} name={myUsername} alt={myUsername} />
 
           <div className="col" style={{ flex: 1 }}>
             <div className="muted">שם משתמש</div>
@@ -202,10 +197,6 @@ export default function ProfileMe() {
               >
                 שמירה
               </button>
-            </div>
-
-            <div className="muted" style={{ fontSize: 12 }}>
-              * לפי הדרישה: כאן עורכים רק תמונה ושם משתמש (Mock)
             </div>
           </div>
         </div>
