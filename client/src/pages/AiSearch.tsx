@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api/http";
+import PostImage from "../components/PostImage";
 import type { Post } from "../types/models";
 
 type AiResult = { tokens: string[]; explanation: string };
@@ -11,10 +12,7 @@ const PAGE_LIMIT = 25;
 
 function loadCache(): Record<string, AiResult> {
   try {
-    return JSON.parse(localStorage.getItem(CACHE_KEY) ?? "{}") as Record<
-      string,
-      AiResult
-    >;
+    return JSON.parse(localStorage.getItem(CACHE_KEY) ?? "{}") as Record<string, AiResult>;
   } catch {
     return {};
   }
@@ -26,17 +24,16 @@ function saveCache(cache: Record<string, AiResult>) {
 
 function mockAiParse(q: string): AiResult {
   const s = q.toLowerCase();
-
   const tokens: string[] = [];
   const push = (t: string) => (tokens.includes(t) ? null : tokens.push(t));
 
-  if (s.includes("טבעוני")) push("טבעוני");
-  if (s.includes("ללא גלוטן") || s.includes("בלי גלוטן")) push("גלוטן");
-  if (s.includes("קינואה")) push("קינואה");
-  if (s.includes("פסטה")) push("פסטה");
-  if (s.includes("סלט")) push("סלט");
-  if (s.includes("עוף")) push("עוף");
-  if (s.includes("דג") || s.includes("טונה")) push("טונה");
+  if (s.includes("vegan")) push("vegan");
+  if (s.includes("gluten free") || s.includes("gluten-free")) push("gluten");
+  if (s.includes("quinoa")) push("quinoa");
+  if (s.includes("pasta")) push("pasta");
+  if (s.includes("salad")) push("salad");
+  if (s.includes("chicken")) push("chicken");
+  if (s.includes("fish") || s.includes("tuna")) push("tuna");
 
   if (tokens.length === 0) {
     s.split(/\s+/)
@@ -48,7 +45,7 @@ function mockAiParse(q: string): AiResult {
 
   return {
     tokens,
-    explanation: `הבנתי שתרצי תוצאות שכוללות: ${tokens.join(", ") || "—"}`,
+    explanation: `Searching for recipes that include: ${tokens.join(", ") || "—"}`,
   };
 }
 
@@ -77,16 +74,12 @@ export default function AiSearch() {
 
   const filtered = useMemo(() => {
     if (!result?.tokens?.length) return items;
-    return items.filter((p) =>
-      result.tokens.every((t) =>
-        `${p.title} ${p.text}`.toLowerCase().includes(t.toLowerCase())
-      )
-    );
+    return items.filter((p) => result.tokens.every((t) => `${p.title} ${p.text}`.toLowerCase().includes(t.toLowerCase())));
   }, [items, result]);
 
   async function run() {
     if (!query.trim()) return;
-    if (!canRun) return alert("חכי רגע לפני חיפוש נוסף (cooldown)");
+    if (!canRun) return alert("Please wait a moment before running another search.");
 
     setLastRun(Date.now());
 
@@ -104,18 +97,16 @@ export default function AiSearch() {
     <div className="col" style={{ gap: 14 }}>
       <div className="card">
         <h2 style={{ marginTop: 0 }}>AI Search (Mock)</h2>
-        <p className="muted">
-          חיפוש חופשי בתוך המתכונים שלך בלבד.
-        </p>
+        <p className="muted">Free-text search across your own recipes only.</p>
 
         <div className="row" style={{ alignItems: "stretch" }}>
           <input
             className="input"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder='לדוגמה: "טבעוני ללא גלוטן"'
+            placeholder='For example: "vegan gluten free"'
           />
-          <button className="btn btnPrimary" onClick={run}>
+          <button className="btn btnPrimary" onClick={() => void run()}>
             Search
           </button>
         </div>
@@ -126,12 +117,9 @@ export default function AiSearch() {
           </div>
         )}
 
-        <div
-          className="row"
-          style={{ marginTop: 12, justifyContent: "space-between" }}
-        >
+        <div className="row" style={{ marginTop: 12, justifyContent: "space-between" }}>
           <Link className="btn" to="/feed">
-            ← חזרה לפיד
+            Back to feed
           </Link>
         </div>
       </div>
@@ -140,25 +128,21 @@ export default function AiSearch() {
         <div className="postCard" key={p.id}>
           <div className="postBody">
             <div className="postTitle">{p.title}</div>
-            {p.text.trim() && p.text.trim() !== p.title.trim() && (
-              <div className="postText">{p.text}</div>
-            )}
-            {p.imageUrl && (
-              <div className="postImageWrap">
-                <img className="postImage" src={p.imageUrl} alt="" />
-              </div>
-            )}
+            {p.text.trim() && p.text.trim() !== p.title.trim() && <div className="postText">{p.text}</div>}
+            <div className="postImageWrap">
+              <PostImage className="postImage" src={p.imageUrl} alt={p.title} />
+            </div>
           </div>
           <div className="postActions">
             <Link className="btn" to={`/post/${p.id}/comments`}>
-              תגובות
+              Comments
             </Link>
           </div>
         </div>
       ))}
 
-      {loading && <div className="card">טוען…</div>}
-      {filtered.length === 0 && <div className="card muted">אין התאמות</div>}
+      {loading && <div className="card">Loading...</div>}
+      {filtered.length === 0 && <div className="card muted">No matches found.</div>}
     </div>
   );
 }

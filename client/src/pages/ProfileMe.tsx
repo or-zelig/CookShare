@@ -1,27 +1,23 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api/http";
 import { useAuth } from "../auth/AuthContext";
 import Avatar from "../components/Avatar";
+import PostImage from "../components/PostImage";
 import { db } from "../mock/db";
 import type { Post } from "../types/models";
 
 export default function ProfileMe() {
   const { user, refreshUser } = useAuth();
   const me = user;
-
-  // ✅ חייב להיות לפני hooks + פתרון null
   if (!me) return null;
 
-  // ✅ פתרון #2: צילום ערך שאחרי ה-guard הוא בוודאות string
   const myUsername = me.username;
 
   const [username, setUsername] = useState(myUsername);
   const [busy, setBusy] = useState(false);
   const [avatarFile, setAvatarFile] = useState<File | undefined>(undefined);
-  const [avatarPreview, setAvatarPreview] = useState<string | undefined>(
-    undefined
-  );
+  const [avatarPreview, setAvatarPreview] = useState<string | undefined>(undefined);
   const [avatarUrl, setAvatarUrl] = useState(me.avatarUrl || "");
 
   const [posts, setPosts] = useState<Post[]>([]);
@@ -29,15 +25,9 @@ export default function ProfileMe() {
   const [editingPost, setEditingPost] = useState<Post | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editText, setEditText] = useState("");
-  const [editImageUrlRel, setEditImageUrlRel] = useState<string | undefined>(
-    undefined
-  );
-  const [editImageFile, setEditImageFile] = useState<File | undefined>(
-    undefined
-  );
-  const [editImagePreview, setEditImagePreview] = useState<
-    string | undefined
-  >(undefined);
+  const [editImageUrlRel, setEditImageUrlRel] = useState<string | undefined>(undefined);
+  const [editImageFile, setEditImageFile] = useState<File | undefined>(undefined);
+  const [editImagePreview, setEditImagePreview] = useState<string | undefined>(undefined);
   const [savingPost, setSavingPost] = useState(false);
 
   useEffect(() => {
@@ -102,7 +92,6 @@ export default function ProfileMe() {
       setAvatarUrl(nextAvatarUrl);
       setAvatarFile(undefined);
       setAvatarPreview(undefined);
-      alert("עודכן (Mock)");
     } finally {
       setBusy(false);
     }
@@ -128,8 +117,8 @@ export default function ProfileMe() {
 
   async function savePostEdit() {
     if (!editingPost) return;
-    if (!editTitle.trim()) return alert("כותרת חובה");
-    if (!editText.trim()) return alert("טקסט חובה");
+    if (!editTitle.trim()) return alert("Title is required");
+    if (!editText.trim()) return alert("Text is required");
 
     setSavingPost(true);
     try {
@@ -156,7 +145,7 @@ export default function ProfileMe() {
   }
 
   async function deletePost(p: Post) {
-    if (!confirm("למחוק את הפוסט?")) return;
+    if (!confirm("Delete this post?")) return;
     await api.deletePost(p.id);
     const res = await api.getMyPosts(50, null);
     setPosts(res.posts);
@@ -165,37 +154,36 @@ export default function ProfileMe() {
   return (
     <div className="col" style={{ gap: 14 }}>
       <div className="card">
-        <h2 style={{ marginTop: 0 }}>הפרופיל שלי</h2>
+        <h2 style={{ marginTop: 0 }}>My Profile</h2>
 
         <div className="row" style={{ gap: 14 }}>
           <Avatar className="avatarLg" src={displayAvatar} name={myUsername} alt={myUsername} />
 
           <div className="col" style={{ flex: 1 }}>
-            <div className="muted">שם משתמש</div>
-            <input
-              className="input"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-            />
+            <div className="muted">Username</div>
+            <input className="input" value={username} onChange={(e) => setUsername(e.target.value)} />
 
-            <div className="muted">תמונה</div>
-            <input
-              type="file"
-              accept="image/*"
-              disabled={busy}
-              onChange={(e) => void onPick(e.target.files?.[0])}
-            />
+            <div className="muted">Avatar</div>
+            <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap" }}>
+              <label className="btn" style={{ cursor: busy ? "not-allowed" : "pointer" }}>
+                Choose image
+                <input
+                  className="srOnly"
+                  type="file"
+                  accept="image/*"
+                  disabled={busy}
+                  onChange={(e) => void onPick(e.target.files?.[0])}
+                />
+              </label>
+              <span className="muted">{avatarFile?.name ?? "No file selected"}</span>
+            </div>
 
             <div className="row" style={{ justifyContent: "space-between" }}>
               <Link className="btn" to="/feed">
-                חזרה לפיד
+                Back to feed
               </Link>
-              <button
-                className="btn btnPrimary"
-                disabled={busy}
-                onClick={save}
-              >
-                שמירה
+              <button className="btn btnPrimary" disabled={busy} onClick={() => void save()}>
+                Save
               </button>
             </div>
           </div>
@@ -203,11 +191,11 @@ export default function ProfileMe() {
       </div>
 
       <div className="card">
-        <h3 style={{ marginTop: 0 }}>הפוסטים שלי</h3>
+        <h3 style={{ marginTop: 0 }}>My Posts</h3>
         {postsLoading ? (
-          <p className="muted">טוען...</p>
+          <p className="muted">Loading...</p>
         ) : posts.length === 0 ? (
-          <p className="muted">אין פוסטים</p>
+          <p className="muted">No posts yet.</p>
         ) : (
           <div className="col" style={{ gap: 10 }}>
             {posts.map((p) => (
@@ -216,36 +204,34 @@ export default function ProfileMe() {
                   <div className="miniPostBody">
                     <div className="miniPostTitle">{p.title}</div>
                     <div className="miniPostText">{p.text}</div>
-                  <div className="miniPostMeta">
-                    <span className="muted">{p.likeCount ?? 0} לייקים</span>
-                    <div className="row">
-                      <button
-                        className="btn danger"
-                        onClick={() => void deletePost(p)}
-                        aria-label="מחיקת פוסט"
-                        title="מחיקת פוסט"
-                      >
-                        🗑️
-                      </button>
-                      <button
-                        className="btn"
-                        onClick={() => openEditPost(p)}
-                        aria-label="עריכת פוסט"
-                        title="עריכת פוסט"
-                      >
-                        ✎
-                      </button>
-                      <Link className="btn" to={`/post/${p.id}/comments`}>
-                        תגובות
-                      </Link>
+                    <div className="miniPostMeta">
+                      <span className="muted">{p.likeCount ?? 0} likes</span>
+                      <div className="row">
+                        <button
+                          className="btn danger"
+                          onClick={() => void deletePost(p)}
+                          aria-label="Delete post"
+                          title="Delete post"
+                        >
+                          🗑️
+                        </button>
+                        <button
+                          className="btn"
+                          onClick={() => openEditPost(p)}
+                          aria-label="Edit post"
+                          title="Edit post"
+                        >
+                          ✎
+                        </button>
+                        <Link className="btn" to={`/post/${p.id}/comments`}>
+                          Comments
+                        </Link>
+                      </div>
                     </div>
                   </div>
-                </div>
-                  {p.imageUrl && (
-                    <Link to={`/post/${p.id}/comments`} className="miniPostImage">
-                      <img src={p.imageUrl} alt="" />
-                    </Link>
-                  )}
+                  <Link to={`/post/${p.id}/comments`} className="miniPostImage">
+                    <PostImage src={p.imageUrl} alt={p.title} />
+                  </Link>
                 </div>
               </div>
             ))}
@@ -254,18 +240,15 @@ export default function ProfileMe() {
       </div>
 
       {editingPost && (
-        <div
-          className="modalBackdrop"
-          onMouseDown={() => setEditingPost(null)}
-        >
+        <div className="modalBackdrop" onMouseDown={() => setEditingPost(null)}>
           <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
-            <h3 style={{ marginTop: 0 }}>עריכת פוסט</h3>
+            <h3 style={{ marginTop: 0 }}>Edit Post</h3>
 
             <input
               className="input"
               value={editTitle}
               onChange={(e) => setEditTitle(e.target.value)}
-              placeholder="כותרת המתכון"
+              placeholder="Recipe title"
             />
 
             <textarea
@@ -273,27 +256,30 @@ export default function ProfileMe() {
               style={{ minHeight: 110, resize: "vertical" }}
               value={editText}
               onChange={(e) => setEditText(e.target.value)}
-              placeholder="מה בא לך לשתף?"
+              placeholder="What would you like to share?"
             />
 
             <div className="row" style={{ justifyContent: "space-between" }}>
-              <input
-                type="file"
-                accept="image/*"
-                disabled={savingPost}
-                onChange={(e) => void onPickPostImage(e.target.files?.[0])}
-              />
+              <div className="row" style={{ flexWrap: "wrap" }}>
+                <label className="btn" style={{ cursor: savingPost ? "not-allowed" : "pointer" }}>
+                  Choose image
+                  <input
+                    className="srOnly"
+                    type="file"
+                    accept="image/*"
+                    disabled={savingPost}
+                    onChange={(e) => void onPickPostImage(e.target.files?.[0])}
+                  />
+                </label>
+                <span className="muted">{editImageFile?.name ?? "No file selected"}</span>
+              </div>
 
               <div className="row">
                 <button className="btn" onClick={() => setEditingPost(null)}>
-                  ביטול
+                  Cancel
                 </button>
-                <button
-                  className="btn btnPrimary"
-                  disabled={savingPost}
-                  onClick={savePostEdit}
-                >
-                  שמירה
+                <button className="btn btnPrimary" disabled={savingPost} onClick={() => void savePostEdit()}>
+                  Save
                 </button>
               </div>
             </div>

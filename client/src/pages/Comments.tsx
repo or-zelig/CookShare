@@ -1,12 +1,13 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../api/http";
 import { useAuth } from "../auth/AuthContext";
 import Avatar from "../components/Avatar";
+import PostImage from "../components/PostImage";
 import type { Comment, Post } from "../types/models";
 
 function fmtTime(iso: string) {
-  return new Date(iso).toLocaleString("he-IL", {
+  return new Date(iso).toLocaleString("en-US", {
     hour: "2-digit",
     minute: "2-digit",
     day: "2-digit",
@@ -65,9 +66,9 @@ export default function Comments() {
     return (
       <div className="card">
         <h2>Comments</h2>
-        <p className="muted">הפוסט לא נמצא</p>
+        <p className="muted">Post not found</p>
         <Link className="btn" to="/feed">
-          חזרה לפיד
+          Back to feed
         </Link>
       </div>
     );
@@ -92,50 +93,37 @@ export default function Comments() {
   return (
     <div className="col" style={{ gap: 14 }}>
       <div className="card">
-        <h2 style={{ marginTop: 0 }}>תגובות</h2>
+        <h2 style={{ marginTop: 0 }}>Comments</h2>
         <div className="muted">
-          לפוסט של{" "}
-          <Link
-            to={`/profile/${post.author?.id ?? ""}`}
-            style={{ textDecoration: "underline" }}
-          >
+          Post by{" "}
+          <Link to={`/profile/${post.author?.id ?? ""}`} style={{ textDecoration: "underline" }}>
             {post.author?.username ?? "Unknown"}
           </Link>
         </div>
         <h3 style={{ marginBottom: 8 }}>{post.title}</h3>
         <p style={{ marginBottom: 0 }}>{post.text}</p>
 
-        {post.imageUrl && (
-          <div className="postImageWrap" style={{ marginTop: 12 }}>
-            <img className="postImage postImageLarge" src={post.imageUrl} alt="" />
-          </div>
-        )}
+        <div className="postImageWrap" style={{ marginTop: 12 }}>
+          <PostImage className="postImage postImageLarge" src={post.imageUrl} alt={post.title} />
+        </div>
 
-        <div
-          className="row"
-          style={{ marginTop: 12, justifyContent: "space-between" }}
-        >
+        <div className="row" style={{ marginTop: 12, justifyContent: "space-between" }}>
           <Link className="btn" to="/feed">
-            ← חזרה לפיד
+            Back to feed
           </Link>
         </div>
       </div>
 
       <div className="card">
         <div className="row" style={{ justifyContent: "space-between" }}>
-          <h3 style={{ margin: 0 }}>הוספת תגובה</h3>
+          <h3 style={{ margin: 0 }}>Add comment</h3>
           <span className="muted">{user?.username}</span>
         </div>
 
         <div className="row" style={{ marginTop: 10, alignItems: "stretch" }}>
-          <input
-            className="input"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="כתבי תגובה..."
-          />
-          <button className="btn btnPrimary" onClick={add}>
-            שליחה
+          <input className="input" value={text} onChange={(e) => setText(e.target.value)} placeholder="Write a comment..." />
+          <button className="btn btnPrimary" onClick={() => void add()}>
+            Send
           </button>
         </div>
       </div>
@@ -150,10 +138,7 @@ export default function Comments() {
               <div className="row" style={{ gap: 10 }}>
                 <Avatar className="avatarSm" src={c.author?.avatarUrl} name={c.author?.username} alt={c.author?.username ?? ""} />
                 <div className="col" style={{ gap: 2 }}>
-                  <Link
-                    to={`/profile/${c.author?.id ?? ""}`}
-                    style={{ fontWeight: 600 }}
-                  >
+                  <Link to={`/profile/${c.author?.id ?? ""}`} style={{ fontWeight: 600 }}>
                     {c.author?.username ?? "Unknown"}
                   </Link>
                   <div className="muted" style={{ fontSize: 12 }}>
@@ -163,8 +148,8 @@ export default function Comments() {
               </div>
 
               {mine && (
-                <button className="btn danger" onClick={() => del(c.id)}>
-                  מחיקה
+                <button className="btn danger" onClick={() => void del(c.id)}>
+                  Delete
                 </button>
               )}
             </div>

@@ -2,6 +2,7 @@ import { Link, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { api } from "../api/http";
 import Avatar from "../components/Avatar";
+import PostImage from "../components/PostImage";
 import type { Post, User } from "../types/models";
 
 export default function ProfileUser() {
@@ -39,9 +40,9 @@ export default function ProfileUser() {
       <div className="card">
         <h2>User Profile</h2>
         <p className="muted">userId: {id}</p>
-        <p className="muted">המשתמש לא נמצא</p>
+        <p className="muted">User not found</p>
         <Link className="btn" to="/feed">
-          חזרה לפיד
+          Back to feed
         </Link>
       </div>
     );
@@ -60,21 +61,21 @@ export default function ProfileUser() {
     <div className="col" style={{ gap: 14 }}>
       <div className="card">
         <div className="row" style={{ gap: 14 }}>
-          <Avatar className="avatarLg" src={u?.avatarUrl} name={u?.username} alt={u?.username ?? ""} />
+          <Avatar className="avatarLg" src={u.avatarUrl} name={u.username} alt={u.username} />
           <div className="col" style={{ gap: 4 }}>
-            <h2 style={{ margin: 0 }}>{u?.username ?? ""}</h2>
-            <div className="muted">{u?.email ?? ""}</div>
+            <h2 style={{ margin: 0 }}>{u.username}</h2>
+            <div className="muted">{u.email ?? ""}</div>
             <Link className="btn" to="/feed" style={{ width: "fit-content" }}>
-              ← חזרה לפיד
+              Back to feed
             </Link>
           </div>
         </div>
       </div>
 
       <div className="card">
-        <h3 style={{ marginTop: 0 }}>הפוסטים של {u.username}</h3>
+        <h3 style={{ marginTop: 0 }}>{u.username}&apos;s posts</h3>
         {posts.length === 0 ? (
-          <p className="muted">אין פוסטים</p>
+          <p className="muted">No posts yet.</p>
         ) : (
           <div className="col" style={{ gap: 10 }}>
             {posts.map((p) => (
@@ -84,17 +85,15 @@ export default function ProfileUser() {
                     <div className="miniPostTitle">{p.title}</div>
                     <div className="miniPostText">{p.text}</div>
                     <div className="miniPostMeta">
-                      <span className="muted">{p.likeCount ?? 0} לייקים</span>
+                      <span className="muted">{p.likeCount ?? 0} likes</span>
                       <Link className="btn" to={`/post/${p.id}/comments`}>
-                        תגובות
+                        Comments
                       </Link>
                     </div>
                   </div>
-                  {p.imageUrl && (
-                    <Link to={`/post/${p.id}/comments`} className="miniPostImage">
-                      <img src={p.imageUrl} alt="" />
-                    </Link>
-                  )}
+                  <Link to={`/post/${p.id}/comments`} className="miniPostImage">
+                    <PostImage src={p.imageUrl} alt={p.title} />
+                  </Link>
                 </div>
               </div>
             ))}

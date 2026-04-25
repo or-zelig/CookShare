@@ -28,23 +28,23 @@ export default function App() {
         {!user ? (
           <nav className="nav">
             <NavLink className={({ isActive }) => `navLink${isActive ? " navLinkActive" : ""}`} to="/login">
-              התחברות
+              Login
             </NavLink>
             <NavLink className={({ isActive }) => `navLink${isActive ? " navLinkActive" : ""}`} to="/register">
-              הרשמה
+              Register
             </NavLink>
           </nav>
         ) : (
           <>
             <nav className="nav">
               <Link className="navLink" to="/feed">
-                פיד
+                Feed
               </Link>
               <Link className="navLink" to="/suggested">
                 Suggested
               </Link>
               <Link className="navLink" to="/profile/me">
-                הפרופיל שלי
+                My Profile
               </Link>
             </nav>
 
@@ -55,7 +55,7 @@ export default function App() {
               </div>
 
               <button className="btn" onClick={() => void logout()}>
-                התנתקות
+                Logout
               </button>
             </div>
           </>
@@ -68,7 +68,7 @@ export default function App() {
             path="/"
             element={
               loading ? (
-                <div className="card">טוען…</div>
+                <div className="card">Loading...</div>
               ) : user ? (
                 <Navigate to="/feed" replace />
               ) : (
@@ -77,12 +77,10 @@ export default function App() {
             }
           />
 
-          {/* Public */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/auth/callback" element={<OAuthCallback />} />
 
-          {/* Protected */}
           <Route
             path="/feed"
             element={
